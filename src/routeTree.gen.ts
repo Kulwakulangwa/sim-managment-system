@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedWarrantiesRouteImport } from './routes/_authenticated/warranties'
+import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
 import { Route as AuthenticatedRepairsRouteImport } from './routes/_authenticated/repairs'
 import { Route as AuthenticatedInventoryRouteImport } from './routes/_authenticated/inventory'
 import { Route as AuthenticatedInstallmentsRouteImport } from './routes/_authenticated/installments'
@@ -39,6 +40,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthenticatedWarrantiesRoute = AuthenticatedWarrantiesRouteImport.update({
   id: '/warranties',
   path: '/warranties',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedReportsRoute = AuthenticatedReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedRepairsRoute = AuthenticatedRepairsRouteImport.update({
@@ -92,6 +98,7 @@ export interface FileRoutesByFullPath {
   '/installments': typeof AuthenticatedInstallmentsRoute
   '/inventory': typeof AuthenticatedInventoryRoute
   '/repairs': typeof AuthenticatedRepairsRoute
+  '/reports': typeof AuthenticatedReportsRoute
   '/warranties': typeof AuthenticatedWarrantiesRoute
   '/sales/pos': typeof AuthenticatedSalesPosRoute
   '/sales/': typeof AuthenticatedSalesIndexRoute
@@ -105,6 +112,7 @@ export interface FileRoutesByTo {
   '/installments': typeof AuthenticatedInstallmentsRoute
   '/inventory': typeof AuthenticatedInventoryRoute
   '/repairs': typeof AuthenticatedRepairsRoute
+  '/reports': typeof AuthenticatedReportsRoute
   '/warranties': typeof AuthenticatedWarrantiesRoute
   '/sales/pos': typeof AuthenticatedSalesPosRoute
   '/sales': typeof AuthenticatedSalesIndexRoute
@@ -120,6 +128,7 @@ export interface FileRoutesById {
   '/_authenticated/installments': typeof AuthenticatedInstallmentsRoute
   '/_authenticated/inventory': typeof AuthenticatedInventoryRoute
   '/_authenticated/repairs': typeof AuthenticatedRepairsRoute
+  '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/warranties': typeof AuthenticatedWarrantiesRoute
   '/_authenticated/sales/pos': typeof AuthenticatedSalesPosRoute
   '/_authenticated/sales/': typeof AuthenticatedSalesIndexRoute
@@ -135,6 +144,7 @@ export interface FileRouteTypes {
     | '/installments'
     | '/inventory'
     | '/repairs'
+    | '/reports'
     | '/warranties'
     | '/sales/pos'
     | '/sales/'
@@ -148,6 +158,7 @@ export interface FileRouteTypes {
     | '/installments'
     | '/inventory'
     | '/repairs'
+    | '/reports'
     | '/warranties'
     | '/sales/pos'
     | '/sales'
@@ -162,6 +173,7 @@ export interface FileRouteTypes {
     | '/_authenticated/installments'
     | '/_authenticated/inventory'
     | '/_authenticated/repairs'
+    | '/_authenticated/reports'
     | '/_authenticated/warranties'
     | '/_authenticated/sales/pos'
     | '/_authenticated/sales/'
@@ -201,6 +213,13 @@ declare module '@tanstack/react-router' {
       path: '/warranties'
       fullPath: '/warranties'
       preLoaderRoute: typeof AuthenticatedWarrantiesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports': {
+      id: '/_authenticated/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AuthenticatedReportsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/repairs': {
@@ -269,6 +288,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedInstallmentsRoute: typeof AuthenticatedInstallmentsRoute
   AuthenticatedInventoryRoute: typeof AuthenticatedInventoryRoute
   AuthenticatedRepairsRoute: typeof AuthenticatedRepairsRoute
+  AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedWarrantiesRoute: typeof AuthenticatedWarrantiesRoute
   AuthenticatedSalesPosRoute: typeof AuthenticatedSalesPosRoute
   AuthenticatedSalesIndexRoute: typeof AuthenticatedSalesIndexRoute
@@ -281,6 +301,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedInstallmentsRoute: AuthenticatedInstallmentsRoute,
   AuthenticatedInventoryRoute: AuthenticatedInventoryRoute,
   AuthenticatedRepairsRoute: AuthenticatedRepairsRoute,
+  AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedWarrantiesRoute: AuthenticatedWarrantiesRoute,
   AuthenticatedSalesPosRoute: AuthenticatedSalesPosRoute,
   AuthenticatedSalesIndexRoute: AuthenticatedSalesIndexRoute,
