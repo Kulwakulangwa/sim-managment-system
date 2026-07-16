@@ -14,16 +14,417 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      customers: {
+        Row: {
+          created_at: string
+          full_name: string
+          id: string
+          phone: string
+        }
+        Insert: {
+          created_at?: string
+          full_name: string
+          id?: string
+          phone: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string
+          id?: string
+          phone?: string
+        }
+        Relationships: []
+      }
+      expenses: {
+        Row: {
+          amount: number
+          category: Database["public"]["Enums"]["expense_category"]
+          created_at: string
+          created_by: string | null
+          expense_date: string
+          id: string
+          note: string | null
+        }
+        Insert: {
+          amount: number
+          category: Database["public"]["Enums"]["expense_category"]
+          created_at?: string
+          created_by?: string | null
+          expense_date?: string
+          id?: string
+          note?: string | null
+        }
+        Update: {
+          amount?: number
+          category?: Database["public"]["Enums"]["expense_category"]
+          created_at?: string
+          created_by?: string | null
+          expense_date?: string
+          id?: string
+          note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      installment_payments: {
+        Row: {
+          amount: number
+          due_date: string | null
+          id: string
+          installment_plan_id: string | null
+          paid_date: string | null
+          status: Database["public"]["Enums"]["installment_status"]
+        }
+        Insert: {
+          amount: number
+          due_date?: string | null
+          id?: string
+          installment_plan_id?: string | null
+          paid_date?: string | null
+          status?: Database["public"]["Enums"]["installment_status"]
+        }
+        Update: {
+          amount?: number
+          due_date?: string | null
+          id?: string
+          installment_plan_id?: string | null
+          paid_date?: string | null
+          status?: Database["public"]["Enums"]["installment_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "installment_payments_installment_plan_id_fkey"
+            columns: ["installment_plan_id"]
+            isOneToOne: false
+            referencedRelation: "installment_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      installment_plans: {
+        Row: {
+          balance: number | null
+          created_at: string
+          id: string
+          paid_amount: number
+          sale_id: string | null
+          total_amount: number
+        }
+        Insert: {
+          balance?: number | null
+          created_at?: string
+          id?: string
+          paid_amount?: number
+          sale_id?: string | null
+          total_amount: number
+        }
+        Update: {
+          balance?: number | null
+          created_at?: string
+          id?: string
+          paid_amount?: number
+          sale_id?: string | null
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "installment_plans_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_items: {
+        Row: {
+          brand: string | null
+          buy_price: number
+          condition: Database["public"]["Enums"]["item_condition"] | null
+          created_at: string
+          id: string
+          imei: string | null
+          item_type: Database["public"]["Enums"]["item_type"]
+          low_stock_threshold: number
+          model: string | null
+          name: string | null
+          quantity: number
+          sell_price: number
+        }
+        Insert: {
+          brand?: string | null
+          buy_price?: number
+          condition?: Database["public"]["Enums"]["item_condition"] | null
+          created_at?: string
+          id?: string
+          imei?: string | null
+          item_type?: Database["public"]["Enums"]["item_type"]
+          low_stock_threshold?: number
+          model?: string | null
+          name?: string | null
+          quantity?: number
+          sell_price?: number
+        }
+        Update: {
+          brand?: string | null
+          buy_price?: number
+          condition?: Database["public"]["Enums"]["item_condition"] | null
+          created_at?: string
+          id?: string
+          imei?: string | null
+          item_type?: Database["public"]["Enums"]["item_type"]
+          low_stock_threshold?: number
+          model?: string | null
+          name?: string | null
+          quantity?: number
+          sell_price?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string
+          id: string
+          phone: string | null
+        }
+        Insert: {
+          created_at?: string
+          full_name: string
+          id: string
+          phone?: string | null
+        }
+        Update: {
+          created_at?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+        }
+        Relationships: []
+      }
+      repairs: {
+        Row: {
+          completed_date: string | null
+          customer_id: string | null
+          device_description: string
+          id: string
+          issue_description: string | null
+          received_date: string
+          repair_cost: number
+          status: Database["public"]["Enums"]["repair_status"]
+        }
+        Insert: {
+          completed_date?: string | null
+          customer_id?: string | null
+          device_description: string
+          id?: string
+          issue_description?: string | null
+          received_date?: string
+          repair_cost?: number
+          status?: Database["public"]["Enums"]["repair_status"]
+        }
+        Update: {
+          completed_date?: string | null
+          customer_id?: string | null
+          device_description?: string
+          id?: string
+          issue_description?: string | null
+          received_date?: string
+          repair_cost?: number
+          status?: Database["public"]["Enums"]["repair_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "repairs_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales: {
+        Row: {
+          buy_price_snapshot: number
+          customer_id: string | null
+          discount: number
+          id: string
+          inventory_item_id: string | null
+          payment_type: Database["public"]["Enums"]["sale_payment_type"]
+          profit: number | null
+          quantity: number
+          sale_date: string
+          sell_price: number
+          sold_by: string | null
+        }
+        Insert: {
+          buy_price_snapshot?: number
+          customer_id?: string | null
+          discount?: number
+          id?: string
+          inventory_item_id?: string | null
+          payment_type?: Database["public"]["Enums"]["sale_payment_type"]
+          profit?: number | null
+          quantity?: number
+          sale_date?: string
+          sell_price: number
+          sold_by?: string | null
+        }
+        Update: {
+          buy_price_snapshot?: number
+          customer_id?: string | null
+          discount?: number
+          id?: string
+          inventory_item_id?: string | null
+          payment_type?: Database["public"]["Enums"]["sale_payment_type"]
+          profit?: number | null
+          quantity?: number
+          sale_date?: string
+          sell_price?: number
+          sold_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_sold_by_fkey"
+            columns: ["sold_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      warranties: {
+        Row: {
+          end_date: string
+          id: string
+          period_months: number
+          sale_id: string | null
+          start_date: string
+          status: Database["public"]["Enums"]["warranty_status"]
+        }
+        Insert: {
+          end_date: string
+          id?: string
+          period_months?: number
+          sale_id?: string | null
+          start_date?: string
+          status?: Database["public"]["Enums"]["warranty_status"]
+        }
+        Update: {
+          end_date?: string
+          id?: string
+          period_months?: number
+          sale_id?: string | null
+          start_date?: string
+          status?: Database["public"]["Enums"]["warranty_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warranties_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warranty_claims: {
+        Row: {
+          claim_date: string
+          id: string
+          issue_description: string | null
+          resolution: string | null
+          warranty_id: string | null
+        }
+        Insert: {
+          claim_date?: string
+          id?: string
+          issue_description?: string | null
+          resolution?: string | null
+          warranty_id?: string | null
+        }
+        Update: {
+          claim_date?: string
+          id?: string
+          issue_description?: string | null
+          resolution?: string | null
+          warranty_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warranty_claims_warranty_id_fkey"
+            columns: ["warranty_id"]
+            isOneToOne: false
+            referencedRelation: "warranties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_my_role: {
+        Args: never
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "owner" | "manager" | "cashier"
+      expense_category: "rent" | "electricity" | "salaries" | "other"
+      installment_status: "pending" | "paid" | "overdue"
+      item_condition: "new" | "used"
+      item_type: "phone" | "accessory"
+      repair_status: "received" | "in_progress" | "completed"
+      sale_payment_type: "cash" | "installment"
+      warranty_status: "active" | "expired" | "claimed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +551,15 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["owner", "manager", "cashier"],
+      expense_category: ["rent", "electricity", "salaries", "other"],
+      installment_status: ["pending", "paid", "overdue"],
+      item_condition: ["new", "used"],
+      item_type: ["phone", "accessory"],
+      repair_status: ["received", "in_progress", "completed"],
+      sale_payment_type: ["cash", "installment"],
+      warranty_status: ["active", "expired", "claimed"],
+    },
   },
 } as const
