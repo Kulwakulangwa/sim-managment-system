@@ -70,7 +70,8 @@ function SalesPage() {
                   <TableCell className="text-right text-success">{formatTZS(Number(s.profit ?? 0))}</TableCell>
                   <TableCell className="text-right">
                     <Button size="sm" variant="ghost" onClick={() => generateReceipt({
-                      id: s.id,
+                      shopName: t("appName"),
+                      saleId: s.id,
                       date: s.sale_date,
                       itemLabel: label,
                       quantity: s.quantity,
@@ -79,7 +80,7 @@ function SalesPage() {
                       total,
                       customerName: s.customers?.full_name,
                       customerPhone: s.customers?.phone,
-                      soldBy: s.profiles?.full_name,
+                      cashier: s.profiles?.full_name,
                       paymentType: s.payment_type === "cash" ? t("cash") : t("installment"),
                     })}><Download className="h-4 w-4" /></Button>
                   </TableCell>
