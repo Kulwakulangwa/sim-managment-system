@@ -28,9 +28,10 @@ function Dashboard() {
         supabase.from("installment_plans").select("balance"),
       ]);
 
-      const sum = (rows: Array<{ sell_price: number; discount: number; quantity: number }> | null) =>
+      type SaleRow = { sell_price: number; discount: number; quantity: number; profit: number | null };
+      const sum = (rows: SaleRow[] | null) =>
         (rows ?? []).reduce((s, r) => s + (Number(r.sell_price) - Number(r.discount)) * Number(r.quantity), 0);
-      const sumProfit = (rows: Array<{ profit: number }> | null) =>
+      const sumProfit = (rows: SaleRow[] | null) =>
         (rows ?? []).reduce((s, r) => s + Number(r.profit ?? 0), 0);
 
       const low = (lowStockRes.data ?? []).filter((i) => (i.quantity ?? 0) <= (i.low_stock_threshold ?? 1)).length;
