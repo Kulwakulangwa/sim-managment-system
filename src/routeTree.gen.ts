@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedWarrantiesRouteImport } from './routes/_authenticated/warranties'
 import { Route as AuthenticatedRepairsRouteImport } from './routes/_authenticated/repairs'
 import { Route as AuthenticatedInventoryRouteImport } from './routes/_authenticated/inventory'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -32,6 +33,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedWarrantiesRoute = AuthenticatedWarrantiesRouteImport.update({
+  id: '/warranties',
+  path: '/warranties',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedRepairsRoute = AuthenticatedRepairsRouteImport.update({
   id: '/repairs',
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/inventory': typeof AuthenticatedInventoryRoute
   '/repairs': typeof AuthenticatedRepairsRoute
+  '/warranties': typeof AuthenticatedWarrantiesRoute
   '/sales/pos': typeof AuthenticatedSalesPosRoute
   '/sales/': typeof AuthenticatedSalesIndexRoute
 }
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/inventory': typeof AuthenticatedInventoryRoute
   '/repairs': typeof AuthenticatedRepairsRoute
+  '/warranties': typeof AuthenticatedWarrantiesRoute
   '/sales/pos': typeof AuthenticatedSalesPosRoute
   '/sales': typeof AuthenticatedSalesIndexRoute
 }
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/inventory': typeof AuthenticatedInventoryRoute
   '/_authenticated/repairs': typeof AuthenticatedRepairsRoute
+  '/_authenticated/warranties': typeof AuthenticatedWarrantiesRoute
   '/_authenticated/sales/pos': typeof AuthenticatedSalesPosRoute
   '/_authenticated/sales/': typeof AuthenticatedSalesIndexRoute
 }
@@ -105,6 +114,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/inventory'
     | '/repairs'
+    | '/warranties'
     | '/sales/pos'
     | '/sales/'
   fileRoutesByTo: FileRoutesByTo
@@ -115,6 +125,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/inventory'
     | '/repairs'
+    | '/warranties'
     | '/sales/pos'
     | '/sales'
   id:
@@ -126,6 +137,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/inventory'
     | '/_authenticated/repairs'
+    | '/_authenticated/warranties'
     | '/_authenticated/sales/pos'
     | '/_authenticated/sales/'
   fileRoutesById: FileRoutesById
@@ -158,6 +170,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/warranties': {
+      id: '/_authenticated/warranties'
+      path: '/warranties'
+      fullPath: '/warranties'
+      preLoaderRoute: typeof AuthenticatedWarrantiesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/repairs': {
       id: '/_authenticated/repairs'
@@ -209,6 +228,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedInventoryRoute: typeof AuthenticatedInventoryRoute
   AuthenticatedRepairsRoute: typeof AuthenticatedRepairsRoute
+  AuthenticatedWarrantiesRoute: typeof AuthenticatedWarrantiesRoute
   AuthenticatedSalesPosRoute: typeof AuthenticatedSalesPosRoute
   AuthenticatedSalesIndexRoute: typeof AuthenticatedSalesIndexRoute
 }
@@ -218,6 +238,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedInventoryRoute: AuthenticatedInventoryRoute,
   AuthenticatedRepairsRoute: AuthenticatedRepairsRoute,
+  AuthenticatedWarrantiesRoute: AuthenticatedWarrantiesRoute,
   AuthenticatedSalesPosRoute: AuthenticatedSalesPosRoute,
   AuthenticatedSalesIndexRoute: AuthenticatedSalesIndexRoute,
 }
