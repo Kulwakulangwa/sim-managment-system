@@ -14,9 +14,83 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          ip_address: string | null
+          new_value: Json | null
+          old_value: Json | null
+          record_id: string | null
+          shop_id: string | null
+          table_name: string | null
+          user_agent: string | null
+          user_id: string | null
+          user_name: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          new_value?: Json | null
+          old_value?: Json | null
+          record_id?: string | null
+          shop_id?: string | null
+          table_name?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          new_value?: Json | null
+          old_value?: Json | null
+          record_id?: string | null
+          shop_id?: string | null
+          table_name?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Relationships: []
+      }
+      backups: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          payload: Json
+          shop_id: string | null
+          size_bytes: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          payload: Json
+          shop_id?: string | null
+          size_bytes?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          payload?: Json
+          shop_id?: string | null
+          size_bytes?: number | null
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           full_name: string
           id: string
           phone: string
@@ -24,6 +98,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           full_name: string
           id?: string
           phone: string
@@ -31,6 +107,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           full_name?: string
           id?: string
           phone?: string
@@ -46,12 +124,53 @@ export type Database = {
           },
         ]
       }
+      error_logs: {
+        Row: {
+          context: Json | null
+          created_at: string
+          id: string
+          message: string
+          resolved: boolean
+          shop_id: string | null
+          source: string
+          stack: string | null
+          url: string | null
+          user_id: string | null
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string
+          id?: string
+          message: string
+          resolved?: boolean
+          shop_id?: string | null
+          source: string
+          stack?: string | null
+          url?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string
+          id?: string
+          message?: string
+          resolved?: boolean
+          shop_id?: string | null
+          source?: string
+          stack?: string | null
+          url?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           amount: number
           category: Database["public"]["Enums"]["expense_category"]
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           expense_date: string
           id: string
           note: string | null
@@ -62,6 +181,8 @@ export type Database = {
           category: Database["public"]["Enums"]["expense_category"]
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           expense_date?: string
           id?: string
           note?: string | null
@@ -72,6 +193,8 @@ export type Database = {
           category?: Database["public"]["Enums"]["expense_category"]
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           expense_date?: string
           id?: string
           note?: string | null
@@ -190,6 +313,8 @@ export type Database = {
           buy_price: number
           condition: Database["public"]["Enums"]["item_condition"] | null
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
           imei: string | null
           item_type: Database["public"]["Enums"]["item_type"]
@@ -205,6 +330,8 @@ export type Database = {
           buy_price?: number
           condition?: Database["public"]["Enums"]["item_condition"] | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           imei?: string | null
           item_type?: Database["public"]["Enums"]["item_type"]
@@ -220,6 +347,8 @@ export type Database = {
           buy_price?: number
           condition?: Database["public"]["Enums"]["item_condition"] | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           imei?: string | null
           item_type?: Database["public"]["Enums"]["item_type"]
@@ -265,6 +394,8 @@ export type Database = {
         Row: {
           completed_date: string | null
           customer_id: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           device_description: string
           id: string
           issue_description: string | null
@@ -276,6 +407,8 @@ export type Database = {
         Insert: {
           completed_date?: string | null
           customer_id?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           device_description: string
           id?: string
           issue_description?: string | null
@@ -287,6 +420,8 @@ export type Database = {
         Update: {
           completed_date?: string | null
           customer_id?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           device_description?: string
           id?: string
           issue_description?: string | null
@@ -316,6 +451,8 @@ export type Database = {
         Row: {
           buy_price_snapshot: number
           customer_id: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           discount: number
           id: string
           inventory_item_id: string | null
@@ -330,6 +467,8 @@ export type Database = {
         Insert: {
           buy_price_snapshot?: number
           customer_id?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           discount?: number
           id?: string
           inventory_item_id?: string | null
@@ -344,6 +483,8 @@ export type Database = {
         Update: {
           buy_price_snapshot?: number
           customer_id?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           discount?: number
           id?: string
           inventory_item_id?: string | null

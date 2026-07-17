@@ -160,6 +160,13 @@ const dict = {
     staff: "Staff",
     createStaff: "Create staff",
     createShopAdmin: "Create shop admin",
+    // Support-reduction
+    trash: "Trash",
+    auditLog: "Activity log",
+    helpCenter: "Help center",
+    errorMonitoring: "Error monitoring",
+    forgotPassword: "Forgot password?",
+    resetPassword: "Reset password",
   },
   sw: {
     appName: "Duka Phone",
@@ -306,6 +313,12 @@ const dict = {
     staff: "Wafanyakazi",
     createStaff: "Ongeza mfanyakazi",
     createShopAdmin: "Ongeza msimamizi wa duka",
+    trash: "Tupio",
+    auditLog: "Kumbukumbu za shughuli",
+    helpCenter: "Kituo cha msaada",
+    errorMonitoring: "Ufuatiliaji wa hitilafu",
+    forgotPassword: "Umesahau nywila?",
+    resetPassword: "Weka nywila mpya",
   },
 } as const;
 
