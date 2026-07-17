@@ -16,7 +16,7 @@ export async function logError(
       message: message.slice(0, 2000),
       stack: opts?.stack?.slice(0, 8000) ?? null,
       url: opts?.url ?? (typeof window !== "undefined" ? window.location.href : null),
-      context: opts?.context ?? null,
+      context: (opts?.context as never) ?? null,
       user_id: data.user?.id ?? null,
     });
   } catch {
