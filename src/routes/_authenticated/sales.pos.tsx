@@ -59,13 +59,14 @@ function POS() {
     mutationFn: async () => {
       if (!selected) throw new Error("Select an item");
       if (qty < 1 || qty > selected.quantity) throw new Error("Invalid quantity");
+      if (!shopId) throw new Error("No shop context");
 
       let custId: string | null = customerId !== "none" ? customerId : null;
       if (!custId && (newCust.name || newCust.phone) && paymentType === "installment") {
         if (!newCust.name || !newCust.phone) throw new Error("Customer required for installment");
       }
       if (!custId && newCust.name && newCust.phone) {
-        const { data, error } = await supabase.from("customers").insert({ full_name: newCust.name, phone: newCust.phone }).select("id").single();
+        const { data, error } = await supabase.from("customers").insert({ full_name: newCust.name, phone: newCust.phone, shop_id: shopId }).select("id").single();
         if (error) throw error;
         custId = data.id;
       }
@@ -81,6 +82,7 @@ function POS() {
         buy_price_snapshot: Number(selected.buy_price),
         payment_type: paymentType,
         sold_by: userRes.user?.id ?? null,
+        shop_id: shopId,
       }).select("id, sale_date").single();
       if (se) throw se;
 
@@ -93,6 +95,7 @@ function POS() {
           period_months: wm,
           start_date: start.toISOString().slice(0, 10),
           end_date: end.toISOString().slice(0, 10),
+          shop_id: shopId,
         });
       }
 
@@ -103,13 +106,14 @@ function POS() {
           sale_id: sale.id,
           total_amount: total,
           paid_amount: down,
+          shop_id: shopId,
         }).select("id").single();
         if (pe) throw pe;
         const remaining = Math.max(0, total - down);
         const per = remaining / months;
         const rows = Array.from({ length: months }).map((_, idx) => {
           const due = new Date(); due.setMonth(due.getMonth() + idx + 1);
-          return { installment_plan_id: plan.id, amount: per, due_date: due.toISOString().slice(0, 10), status: "pending" as const };
+          return { installment_plan_id: plan.id, amount: per, due_date: due.toISOString().slice(0, 10), status: "pending" as const, shop_id: shopId };
         });
         if (rows.length) await supabase.from("installment_payments").insert(rows);
       }
