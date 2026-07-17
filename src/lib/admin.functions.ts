@@ -26,7 +26,7 @@ export const updateShop = createServerFn({ method: "POST" })
     const { data: roles } = await context.supabase.from("user_roles").select("role").eq("user_id", context.userId);
     if (!(roles ?? []).some((r) => r.role === "super_admin")) throw new Error("Forbidden");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const patch: Record<string, unknown> = {};
+    const patch: { name?: string; phone?: string | null; address?: string | null; region?: string | null; status?: "active" | "suspended" } = {};
     if (data.name !== undefined) patch.name = data.name;
     if (data.phone !== undefined) patch.phone = data.phone;
     if (data.address !== undefined) patch.address = data.address;
