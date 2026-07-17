@@ -24,6 +24,7 @@ type Status = "received" | "in_progress" | "completed";
 function RepairsPage() {
   const { t } = useI18n();
   const qc = useQueryClient();
+  const shopId = useShopId();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ customer_id: "none", device_description: "", issue_description: "", repair_cost: "0" });
 
@@ -39,11 +40,13 @@ function RepairsPage() {
   const add = useMutation({
     mutationFn: async () => {
       if (!form.device_description) throw new Error("Device required");
+      if (!shopId) throw new Error("No shop context");
       const { error } = await supabase.from("repairs").insert({
         customer_id: form.customer_id !== "none" ? form.customer_id : null,
         device_description: form.device_description,
         issue_description: form.issue_description || null,
         repair_cost: Number(form.repair_cost || 0),
+        shop_id: shopId,
       });
       if (error) throw error;
     },
