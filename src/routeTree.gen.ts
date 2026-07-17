@@ -23,6 +23,7 @@ import { Route as AuthenticatedExpensesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCustomersRouteImport } from './routes/_authenticated/customers'
 import { Route as AuthenticatedSalesIndexRouteImport } from './routes/_authenticated/sales.index'
+import { Route as ApiPublicBootstrapSuperAdminRouteImport } from './routes/api/public/bootstrap-super-admin'
 import { Route as AuthenticatedSalesPosRouteImport } from './routes/_authenticated/sales.pos'
 
 const AuthRoute = AuthRouteImport.update({
@@ -95,6 +96,12 @@ const AuthenticatedSalesIndexRoute = AuthenticatedSalesIndexRouteImport.update({
   path: '/sales/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicBootstrapSuperAdminRoute =
+  ApiPublicBootstrapSuperAdminRouteImport.update({
+    id: '/api/public/bootstrap-super-admin',
+    path: '/api/public/bootstrap-super-admin',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedSalesPosRoute = AuthenticatedSalesPosRouteImport.update({
   id: '/sales/pos',
   path: '/sales/pos',
@@ -115,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/users': typeof AuthenticatedUsersRoute
   '/warranties': typeof AuthenticatedWarrantiesRoute
   '/sales/pos': typeof AuthenticatedSalesPosRoute
+  '/api/public/bootstrap-super-admin': typeof ApiPublicBootstrapSuperAdminRoute
   '/sales/': typeof AuthenticatedSalesIndexRoute
 }
 export interface FileRoutesByTo {
@@ -131,6 +139,7 @@ export interface FileRoutesByTo {
   '/users': typeof AuthenticatedUsersRoute
   '/warranties': typeof AuthenticatedWarrantiesRoute
   '/sales/pos': typeof AuthenticatedSalesPosRoute
+  '/api/public/bootstrap-super-admin': typeof ApiPublicBootstrapSuperAdminRoute
   '/sales': typeof AuthenticatedSalesIndexRoute
 }
 export interface FileRoutesById {
@@ -149,6 +158,7 @@ export interface FileRoutesById {
   '/_authenticated/users': typeof AuthenticatedUsersRoute
   '/_authenticated/warranties': typeof AuthenticatedWarrantiesRoute
   '/_authenticated/sales/pos': typeof AuthenticatedSalesPosRoute
+  '/api/public/bootstrap-super-admin': typeof ApiPublicBootstrapSuperAdminRoute
   '/_authenticated/sales/': typeof AuthenticatedSalesIndexRoute
 }
 export interface FileRouteTypes {
@@ -167,6 +177,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/warranties'
     | '/sales/pos'
+    | '/api/public/bootstrap-super-admin'
     | '/sales/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -183,6 +194,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/warranties'
     | '/sales/pos'
+    | '/api/public/bootstrap-super-admin'
     | '/sales'
   id:
     | '__root__'
@@ -200,6 +212,7 @@ export interface FileRouteTypes {
     | '/_authenticated/users'
     | '/_authenticated/warranties'
     | '/_authenticated/sales/pos'
+    | '/api/public/bootstrap-super-admin'
     | '/_authenticated/sales/'
   fileRoutesById: FileRoutesById
 }
@@ -207,6 +220,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiPublicBootstrapSuperAdminRoute: typeof ApiPublicBootstrapSuperAdminRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -309,6 +323,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSalesIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/bootstrap-super-admin': {
+      id: '/api/public/bootstrap-super-admin'
+      path: '/api/public/bootstrap-super-admin'
+      fullPath: '/api/public/bootstrap-super-admin'
+      preLoaderRoute: typeof ApiPublicBootstrapSuperAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/sales/pos': {
       id: '/_authenticated/sales/pos'
       path: '/sales/pos'
@@ -356,6 +377,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiPublicBootstrapSuperAdminRoute: ApiPublicBootstrapSuperAdminRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
