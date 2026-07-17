@@ -18,6 +18,7 @@ export const Route = createFileRoute("/_authenticated/warranties")({ component: 
 function WarrantiesPage() {
   const { t } = useI18n();
   const qc = useQueryClient();
+  const shopId = useShopId();
   const [claim, setClaim] = useState<{ id: string; open: boolean; note: string }>({ id: "", open: false, note: "" });
 
   const { data: rows = [] } = useQuery({
@@ -30,7 +31,8 @@ function WarrantiesPage() {
 
   const fileClaim = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("warranty_claims").insert({ warranty_id: claim.id, issue_description: claim.note });
+      if (!shopId) throw new Error("No shop context");
+      const { error } = await supabase.from("warranty_claims").insert({ warranty_id: claim.id, issue_description: claim.note, shop_id: shopId });
       if (error) throw error;
       await supabase.from("warranties").update({ status: "claimed" }).eq("id", claim.id);
     },
