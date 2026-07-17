@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useI18n } from "@/lib/i18n";
 import { formatTZS } from "@/lib/format";
-import { ShoppingCart, TrendingUp, Wrench, AlertTriangle, CreditCard, DollarSign } from "lucide-react";
+import { useMyRole } from "@/hooks/use-role";
+import { ShoppingCart, TrendingUp, Wrench, AlertTriangle, CreditCard, DollarSign, Store, Users as UsersIcon } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -12,6 +13,8 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 function Dashboard() {
   const { t } = useI18n();
+  const { data: myRole } = useMyRole();
+  if (myRole?.isSuperAdmin) return <PlatformDashboard />;
 
   const { data: stats } = useQuery({
     queryKey: ["dashboard-stats"],
