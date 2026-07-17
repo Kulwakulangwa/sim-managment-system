@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
+import { useShopId } from "@/hooks/use-role";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,7 @@ export const Route = createFileRoute("/_authenticated/customers")({ component: C
 function CustomersPage() {
   const { t } = useI18n();
   const qc = useQueryClient();
+  const shopId = useShopId();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ full_name: "", phone: "" });
@@ -29,9 +31,11 @@ function CustomersPage() {
   const add = useMutation({
     mutationFn: async () => {
       if (!form.full_name || !form.phone) throw new Error("Missing");
-      const { error } = await supabase.from("customers").insert(form);
+      if (!shopId) throw new Error("No shop context");
+      const { error } = await supabase.from("customers").insert({ ...form, shop_id: shopId });
       if (error) throw error;
     },
+
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["customers"] }); setOpen(false); setForm({ full_name: "", phone: "" }); toast.success(t("save")); },
     onError: (e: Error) => toast.error(e.message),
   });
