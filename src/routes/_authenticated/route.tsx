@@ -17,6 +17,10 @@ import {
   Building2,
   LogOut,
   Menu,
+  Trash2,
+  History,
+  BookOpen,
+  ShieldAlert,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -50,6 +54,9 @@ function Layout() {
     ? [
         { to: "/dashboard", label: "platformDashboard", icon: LayoutDashboard },
         { to: "/shops", label: "shops", icon: Building2 },
+        { to: "/audit", label: "auditLog", icon: History },
+        { to: "/errors", label: "errorMonitoring", icon: ShieldAlert },
+        { to: "/help", label: "helpCenter", icon: BookOpen },
       ]
     : [
         { to: "/dashboard", label: "dashboard", icon: LayoutDashboard },
@@ -62,6 +69,9 @@ function Layout() {
         { to: "/expenses", label: "expenses", icon: Receipt, roles: ["shop_admin"] },
         { to: "/reports", label: "reports", icon: BarChart3, roles: ["shop_admin"] },
         { to: "/users", label: "staff", icon: UserCog, roles: ["shop_admin"] },
+        { to: "/audit", label: "auditLog", icon: History, roles: ["shop_admin"] },
+        { to: "/trash", label: "trash", icon: Trash2, roles: ["shop_admin"] },
+        { to: "/help", label: "helpCenter", icon: BookOpen },
       ];
 
   const signOut = async () => {
