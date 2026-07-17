@@ -35,29 +35,34 @@ function HomePage() {
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
-      {/* LEFT PANEL – Minimal, only brand */}
-      <div className="relative hidden flex-1 flex-col items-center justify-center bg-[#0B1221] text-[#F5F7FA] md:flex lg:flex-[1.15]">
-        {/* Background gradient */}
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_#1a2a4a_0%,_#0B1221_70%)]" />
-          <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-[#00C9A7]/5 to-transparent" />
-        </div>
+      {/* LEFT PANEL – Minimal with background image */}
+      <div className="relative hidden flex-1 flex-col items-center justify-center text-[#F5F7FA] md:flex lg:flex-[1.15]">
+        {/* Background image */}
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{
+            backgroundImage:
+              "url('https://images.unsplash.com/photo-1616348436168-de43ad0db179?w=800&auto=format&fit=crop')",
+          }}
+        />
+        {/* Overlay for readability */}
+        <div className="absolute inset-0 bg-[#0B1221]/70" />
 
-        {/* Brand */}
+        {/* Brand – centered */}
         <div className="relative z-10 flex flex-col items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#00C9A7] shadow-lg shadow-[#00C9A7]/20">
-            <span className="font-serif text-3xl font-medium text-[#0B1221]">D</span>
+          <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-[#00C9A7] shadow-lg shadow-[#00C9A7]/30">
+            <span className="font-serif text-4xl font-medium text-[#0B1221]">D</span>
           </div>
           <div className="text-center">
             <div className="text-2xl font-medium tracking-wide">Duka Phone</div>
-            <div className="font-mono text-[10px] uppercase tracking-widest text-white/40">
+            <div className="font-mono text-[10px] uppercase tracking-widest text-white/60">
               business software for phone shops
             </div>
           </div>
         </div>
 
-        {/* Decorative dot */}
-        <div className="absolute bottom-8 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-[#00C9A7]/30" />
+        {/* Decorative subtle glow */}
+        <div className="absolute bottom-8 left-1/2 h-1 w-12 -translate-x-1/2 rounded-full bg-[#00C9A7]/30" />
       </div>
 
       {/* RIGHT PANEL – Sign in form */}
