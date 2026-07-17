@@ -35,71 +35,29 @@ function HomePage() {
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
-      {/* LEFT PANEL – Dark with brand, hero, IMEI, stats */}
-      <div className="relative flex flex-1 flex-col bg-[#0B1221] px-8 py-12 text-[#F5F7FA] md:px-16 md:py-14 lg:flex-[1.15]">
-        {/* Background image overlay – replace with a real image if you have one */}
-        <div className="absolute inset-0 opacity-40">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0B1221]/50 via-[#0B1221]/70 to-[#0B1221]" />
-          <div className="h-full w-full bg-[url('https://images.unsplash.com/photo-1616348436168-de43ad0db179?w=800&auto=format&fit=crop')] bg-cover bg-center" />
+      {/* LEFT PANEL – Minimal, only brand */}
+      <div className="relative hidden flex-1 flex-col items-center justify-center bg-[#0B1221] text-[#F5F7FA] md:flex lg:flex-[1.15]">
+        {/* Background gradient */}
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_#1a2a4a_0%,_#0B1221_70%)]" />
+          <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-[#00C9A7]/5 to-transparent" />
         </div>
 
-        <div className="relative z-10 flex flex-1 flex-col">
-          {/* Brand */}
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#00C9A7] font-mono text-sm font-medium text-[#0B1221]">
-              D
-            </div>
-            <div>
-              <div className="text-sm font-medium tracking-wide">Duka Phone</div>
-              <div className="font-mono text-[10px] uppercase tracking-widest text-white/45">
-                business software for phone shops
-              </div>
-            </div>
+        {/* Brand */}
+        <div className="relative z-10 flex flex-col items-center gap-4">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#00C9A7] shadow-lg shadow-[#00C9A7]/20">
+            <span className="font-serif text-3xl font-medium text-[#0B1221]">D</span>
           </div>
-
-          {/* Hero */}
-          <div className="mt-12 max-w-sm md:mt-16">
-            <h1 className="font-serif text-3xl font-light leading-tight md:text-4xl lg:text-5xl">
-              Every phone,<br />every repair,<br />
-              <em className="not-italic font-medium text-[#00C9A7]">fully accounted for.</em>
-            </h1>
-            <p className="mt-4 text-sm leading-relaxed text-white/55 md:text-base">
-              Inventory, IMEI verification, repairs, warranties and debtors — run your shop from records you can trust.
-            </p>
-          </div>
-
-          {/* IMEI Card */}
-          <div className="mt-auto pt-12">
-            <div className="inline-flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-sm">
-              <div className="h-2 w-2 rounded-full bg-[#00C9A7] shadow-[0_0_0_0_rgba(0,201,167,0.5)] animate-pulse" />
-              <div>
-                <div className="font-mono text-[10px] uppercase tracking-widest text-white/45">IMEI checked just now</div>
-                <div className="mt-1 flex items-center gap-2 font-mono text-sm">
-                  354983 021847
-                  <span className="rounded bg-[#00C9A7] px-2 py-0.5 text-[10px] font-medium text-[#0B1221]">
-                    Verified
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="mt-8 flex gap-8 border-t border-white/10 pt-6">
-            <div>
-              <div className="font-mono text-lg font-medium">10,000+</div>
-              <div className="text-xs uppercase tracking-wider text-white/40">devices managed</div>
-            </div>
-            <div>
-              <div className="font-mono text-lg font-medium">500+</div>
-              <div className="text-xs uppercase tracking-wider text-white/40">repairs processed</div>
-            </div>
-            <div>
-              <div className="font-mono text-lg font-medium">99.9%</div>
-              <div className="text-xs uppercase tracking-wider text-white/40">data accuracy</div>
+          <div className="text-center">
+            <div className="text-2xl font-medium tracking-wide">Duka Phone</div>
+            <div className="font-mono text-[10px] uppercase tracking-widest text-white/40">
+              business software for phone shops
             </div>
           </div>
         </div>
+
+        {/* Decorative dot */}
+        <div className="absolute bottom-8 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-[#00C9A7]/30" />
       </div>
 
       {/* RIGHT PANEL – Sign in form */}
@@ -108,13 +66,15 @@ function HomePage() {
           <span className="font-medium text-[#0B1221]">EN</span> · SW
         </div>
 
-        <div className="mx-auto mt-8 w-full max-w-sm flex-1 md:mt-16">
+        <div className="mx-auto mt-8 w-full max-w-sm flex-1 md:mt-20">
           <h2 className="font-serif text-2xl font-medium text-[#0B1221] md:text-3xl">Sign in</h2>
           <p className="mt-1 text-sm text-[#6b7280]">Phone Shop Management</p>
 
-          <form onSubmit={handleSignIn} className="mt-6 space-y-5">
+          <form onSubmit={handleSignIn} className="mt-8 space-y-5">
             <div>
-              <label htmlFor="email" className="block text-xs font-medium text-[#0B1221]">Email</label>
+              <label htmlFor="email" className="block text-xs font-medium text-[#0B1221]">
+                Email
+              </label>
               <input
                 id="email"
                 type="email"
@@ -127,7 +87,9 @@ function HomePage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-xs font-medium text-[#0B1221]">Password</label>
+              <label htmlFor="password" className="block text-xs font-medium text-[#0B1221]">
+                Password
+              </label>
               <input
                 id="password"
                 type="password"
