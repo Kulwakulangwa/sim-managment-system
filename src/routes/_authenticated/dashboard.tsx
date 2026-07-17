@@ -14,10 +14,11 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 function Dashboard() {
   const { t } = useI18n();
   const { data: myRole } = useMyRole();
-  if (myRole?.isSuperAdmin) return <PlatformDashboard />;
+  const isSuper = myRole?.isSuperAdmin ?? false;
 
   const { data: stats } = useQuery({
     queryKey: ["dashboard-stats"],
+    enabled: !isSuper,
     queryFn: async () => {
       const now = new Date();
       const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
@@ -50,6 +51,8 @@ function Dashboard() {
       };
     },
   });
+
+  if (isSuper) return <PlatformDashboard />;
 
   const cards = [
     { label: t("todaySales"), value: formatTZS(stats?.today ?? 0), icon: ShoppingCart, color: "text-primary" },
