@@ -87,3 +87,57 @@ function Dashboard() {
     </div>
   );
 }
+
+function PlatformDashboard() {
+  const { t } = useI18n();
+  const { data: stats } = useQuery({
+    queryKey: ["platform-stats"],
+    queryFn: async () => {
+      const [shopsRes, usersRes, salesRes, repairsRes] = await Promise.all([
+        supabase.from("shops").select("id, status"),
+        supabase.from("user_roles").select("user_id"),
+        supabase.from("sales").select("sell_price, discount, quantity"),
+        supabase.from("repairs").select("id"),
+      ]);
+      const shops = shopsRes.data ?? [];
+      const totalSales = (salesRes.data ?? []).reduce(
+        (s, r) => s + (Number(r.sell_price) - Number(r.discount)) * Number(r.quantity), 0,
+      );
+      return {
+        totalShops: shops.length,
+        activeShops: shops.filter((s) => s.status === "active").length,
+        suspendedShops: shops.filter((s) => s.status === "suspended").length,
+        totalUsers: new Set((usersRes.data ?? []).map((r) => r.user_id)).size,
+        totalSales,
+        totalRepairs: (repairsRes.data ?? []).length,
+      };
+    },
+  });
+  const cards = [
+    { label: t("totalShops"), value: String(stats?.totalShops ?? 0), icon: Store, color: "text-primary" },
+    { label: t("activeShops"), value: String(stats?.activeShops ?? 0), icon: Store, color: "text-success" },
+    { label: t("suspendedShops"), value: String(stats?.suspendedShops ?? 0), icon: Store, color: "text-warning" },
+    { label: t("totalUsers"), value: String(stats?.totalUsers ?? 0), icon: UsersIcon, color: "text-primary" },
+    { label: t("totalSales"), value: formatTZS(stats?.totalSales ?? 0), icon: TrendingUp, color: "text-success" },
+    { label: t("totalRepairs"), value: String(stats?.totalRepairs ?? 0), icon: Wrench, color: "text-primary" },
+  ];
+  return (
+    <div className="space-y-6">
+      <div><h1 className="text-2xl font-bold">{t("platformDashboard")}</h1></div>
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        {cards.map((c) => {
+          const Icon = c.icon;
+          return (
+            <Card key={c.label}>
+              <CardHeader className="pb-2"><div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">{c.label}</p>
+                <Icon className={`h-4 w-4 ${c.color}`} />
+              </div></CardHeader>
+              <CardContent><p className="text-lg lg:text-xl font-bold truncate">{c.value}</p></CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
