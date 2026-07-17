@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
+import { useShopId } from "@/hooks/use-role";
 import { formatTZS } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +19,7 @@ export const Route = createFileRoute("/_authenticated/sales/pos")({ component: P
 function POS() {
   const { t } = useI18n();
   const qc = useQueryClient();
+  const shopId = useShopId();
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
