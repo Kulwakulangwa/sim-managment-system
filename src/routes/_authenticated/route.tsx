@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, redirect, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
-import { useMyRole } from "@/hooks/use-role";
+import { useMyRole, type AppRole } from "@/hooks/use-role";
 import {
   LayoutDashboard,
   Boxes,
@@ -14,6 +14,7 @@ import {
   BarChart3,
   UserCog,
   Smartphone,
+  Building2,
   LogOut,
   Menu,
 } from "lucide-react";
@@ -32,29 +33,36 @@ export const Route = createFileRoute("/_authenticated")({
   component: Layout,
 });
 
-type NavItem = { to: string; label: keyof ReturnType<typeof useI18n>["t"] extends never ? string : string; icon: React.ComponentType<{ className?: string }>; roles?: Array<"owner" | "manager" | "cashier"> };
+type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }>; roles?: AppRole[] };
 
 function Layout() {
   const { t, lang, setLang } = useI18n();
-  const { data: role } = useMyRole();
+  const { data: myRole } = useMyRole();
+  const role = myRole?.role ?? null;
+  const isSuper = myRole?.isSuperAdmin ?? false;
   const navigate = useNavigate();
   const router = useRouter();
   const qc = useQueryClient();
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
 
-  const items: NavItem[] = [
-    { to: "/dashboard", label: "dashboard", icon: LayoutDashboard },
-    { to: "/sales", label: "sales", icon: ShoppingCart },
-    { to: "/inventory", label: "inventory", icon: Boxes },
-    { to: "/customers", label: "customers", icon: Users },
-    { to: "/repairs", label: "repairs", icon: Wrench },
-    { to: "/warranties", label: "warranties", icon: ShieldCheck },
-    { to: "/installments", label: "installments", icon: CreditCard },
-    { to: "/expenses", label: "expenses", icon: Receipt, roles: ["owner", "manager"] },
-    { to: "/reports", label: "reports", icon: BarChart3, roles: ["owner", "manager"] },
-    { to: "/users", label: "users", icon: UserCog, roles: ["owner"] },
-  ];
+  const items: NavItem[] = isSuper
+    ? [
+        { to: "/dashboard", label: "platformDashboard", icon: LayoutDashboard },
+        { to: "/shops", label: "shops", icon: Building2 },
+      ]
+    : [
+        { to: "/dashboard", label: "dashboard", icon: LayoutDashboard },
+        { to: "/sales", label: "sales", icon: ShoppingCart },
+        { to: "/inventory", label: "inventory", icon: Boxes, roles: ["shop_admin", "cashier", "salesperson"] },
+        { to: "/customers", label: "customers", icon: Users },
+        { to: "/repairs", label: "repairs", icon: Wrench, roles: ["shop_admin", "technician"] },
+        { to: "/warranties", label: "warranties", icon: ShieldCheck },
+        { to: "/installments", label: "installments", icon: CreditCard, roles: ["shop_admin", "cashier"] },
+        { to: "/expenses", label: "expenses", icon: Receipt, roles: ["shop_admin"] },
+        { to: "/reports", label: "reports", icon: BarChart3, roles: ["shop_admin"] },
+        { to: "/users", label: "staff", icon: UserCog, roles: ["shop_admin"] },
+      ];
 
   const signOut = async () => {
     await qc.cancelQueries();
@@ -65,6 +73,8 @@ function Layout() {
   };
 
   const visible = items.filter((it) => !it.roles || (role && it.roles.includes(role)));
+
+  const roleLabel = role ? t(role) : "…";
 
   const nav = (
     <nav className="flex flex-col gap-0.5 p-3">
@@ -94,7 +104,6 @@ function Layout() {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-64 bg-sidebar text-sidebar-foreground flex-col border-r border-sidebar-border">
         <div className="p-4 flex items-center gap-3 border-b border-sidebar-border">
           <div className="grid h-9 w-9 place-items-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
@@ -102,7 +111,7 @@ function Layout() {
           </div>
           <div>
             <p className="text-sm font-semibold">{t("appName")}</p>
-            <p className="text-xs text-sidebar-foreground/60 capitalize">{role ? t(role as "owner") : "…"}</p>
+            <p className="text-xs text-sidebar-foreground/60 capitalize">{roleLabel}</p>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto">{nav}</div>
@@ -117,7 +126,6 @@ function Layout() {
         </div>
       </aside>
 
-      {/* Mobile */}
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-40 flex">
           <div className="w-64 bg-sidebar text-sidebar-foreground flex flex-col">

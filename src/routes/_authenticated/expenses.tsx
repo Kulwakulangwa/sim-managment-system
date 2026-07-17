@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
+import { useShopId } from "@/hooks/use-role";
 import { formatTZS, formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -22,6 +23,7 @@ type Cat = "rent" | "electricity" | "salaries" | "other";
 function ExpensesPage() {
   const { t } = useI18n();
   const qc = useQueryClient();
+  const shopId = useShopId();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<{ category: Cat; amount: string; note: string; expense_date: string }>({
     category: "rent", amount: "", note: "", expense_date: new Date().toISOString().slice(0, 10),
@@ -35,10 +37,11 @@ function ExpensesPage() {
   const add = useMutation({
     mutationFn: async () => {
       if (!form.amount) throw new Error("Amount required");
+      if (!shopId) throw new Error("No shop context");
       const { data: user } = await supabase.auth.getUser();
       const { error } = await supabase.from("expenses").insert({
         category: form.category, amount: Number(form.amount), note: form.note || null,
-        expense_date: form.expense_date, created_by: user.user?.id ?? null,
+        expense_date: form.expense_date, created_by: user.user?.id ?? null, shop_id: shopId,
       });
       if (error) throw error;
     },

@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
+import { useShopId } from "@/hooks/use-role";
 import { formatTZS } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -46,6 +47,7 @@ const empty: FormState = {
 function InventoryPage() {
   const { t } = useI18n();
   const qc = useQueryClient();
+  const shopId = useShopId();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -78,7 +80,8 @@ function InventoryPage() {
         const { error } = await supabase.from("inventory_items").update(payload).eq("id", editingId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("inventory_items").insert(payload);
+        if (!shopId) throw new Error("No shop context");
+        const { error } = await supabase.from("inventory_items").insert({ ...payload, shop_id: shopId });
         if (error) throw error;
       }
     },

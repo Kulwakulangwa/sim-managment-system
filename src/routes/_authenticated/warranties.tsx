@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
+import { useShopId } from "@/hooks/use-role";
 import { formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -17,6 +18,7 @@ export const Route = createFileRoute("/_authenticated/warranties")({ component: 
 function WarrantiesPage() {
   const { t } = useI18n();
   const qc = useQueryClient();
+  const shopId = useShopId();
   const [claim, setClaim] = useState<{ id: string; open: boolean; note: string }>({ id: "", open: false, note: "" });
 
   const { data: rows = [] } = useQuery({
@@ -29,7 +31,8 @@ function WarrantiesPage() {
 
   const fileClaim = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("warranty_claims").insert({ warranty_id: claim.id, issue_description: claim.note });
+      if (!shopId) throw new Error("No shop context");
+      const { error } = await supabase.from("warranty_claims").insert({ warranty_id: claim.id, issue_description: claim.note, shop_id: shopId });
       if (error) throw error;
       await supabase.from("warranties").update({ status: "claimed" }).eq("id", claim.id);
     },

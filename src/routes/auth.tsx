@@ -17,11 +17,8 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const navigate = useNavigate();
   const { t, lang, setLang } = useI18n();
-  const [mode, setMode] = useState<"in" | "up">("in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -34,23 +31,9 @@ function AuthPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      if (mode === "up") {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: window.location.origin,
-            data: { full_name: fullName, phone },
-          },
-        });
-        if (error) throw error;
-        toast.success(t("signUp") + " ✓");
-        navigate({ to: "/dashboard", replace: true });
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        navigate({ to: "/dashboard", replace: true });
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      navigate({ to: "/dashboard", replace: true });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error");
     } finally {
@@ -72,14 +55,12 @@ function AuthPage() {
         </div>
         <div className="space-y-4 max-w-md">
           <h1 className="text-3xl font-bold leading-tight">
-            {lang === "sw"
-              ? "Endesha duka lako la simu kwa urahisi."
-              : "Run your phone shop with confidence."}
+            {lang === "sw" ? "Endesha duka lako la simu kwa urahisi." : "Run your phone shop with confidence."}
           </h1>
           <p className="text-sidebar-foreground/70 text-sm leading-relaxed">
             {lang === "sw"
-              ? "Ghala, mauzo, matengenezo, dhamana, malipo ya awamu, matumizi na ripoti — vyote sehemu moja."
-              : "Inventory, sales, repairs, warranties, installments, expenses and reports — all in one place."}
+              ? "Akaunti zinatolewa na msimamizi wa jukwaa tu."
+              : "Accounts are provisioned by the platform administrator only."}
           </p>
         </div>
         <p className="text-xs text-sidebar-foreground/60">© {new Date().getFullYear()} Duka Phone</p>
@@ -94,25 +75,11 @@ function AuthPage() {
           </div>
           <Card className="border-border shadow-sm">
             <CardHeader className="space-y-1">
-              <h2 className="text-2xl font-bold">{mode === "in" ? t("signIn") : t("signUp")}</h2>
-              <p className="text-sm text-muted-foreground">
-                {mode === "up" ? t("firstUserOwner") : t("tagline")}
-              </p>
+              <h2 className="text-2xl font-bold">{t("signIn")}</h2>
+              <p className="text-sm text-muted-foreground">{t("tagline")}</p>
             </CardHeader>
             <CardContent>
               <form className="space-y-3" onSubmit={submit}>
-                {mode === "up" && (
-                  <>
-                    <div>
-                      <Label htmlFor="fullName">{t("fullName")}</Label>
-                      <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-                    </div>
-                    <div>
-                      <Label htmlFor="phone">{t("phone")}</Label>
-                      <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+255…" />
-                    </div>
-                  </>
-                )}
                 <div>
                   <Label htmlFor="email">{t("email")}</Label>
                   <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
@@ -122,22 +89,9 @@ function AuthPage() {
                   <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
                 </div>
                 <Button type="submit" disabled={loading} className="w-full">
-                  {loading ? t("loading") : mode === "in" ? t("signIn") : t("signUp")}
+                  {loading ? t("loading") : t("signIn")}
                 </Button>
               </form>
-              <div className="mt-4 text-center text-sm text-muted-foreground">
-                {mode === "in" ? (
-                  <>
-                    {t("dontHaveAccount")}{" "}
-                    <button className="text-primary font-medium" onClick={() => setMode("up")}>{t("signUp")}</button>
-                  </>
-                ) : (
-                  <>
-                    {t("haveAccount")}{" "}
-                    <button className="text-primary font-medium" onClick={() => setMode("in")}>{t("signIn")}</button>
-                  </>
-                )}
-              </div>
             </CardContent>
           </Card>
         </div>

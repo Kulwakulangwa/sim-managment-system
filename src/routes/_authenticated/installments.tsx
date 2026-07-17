@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
+import { useShopId } from "@/hooks/use-role";
 import { formatTZS, formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -17,6 +18,7 @@ export const Route = createFileRoute("/_authenticated/installments")({ component
 function InstallmentsPage() {
   const { t } = useI18n();
   const qc = useQueryClient();
+  const shopId = useShopId();
   const [pay, setPay] = useState<{ open: boolean; planId: string; amount: string }>({ open: false, planId: "", amount: "" });
 
   const { data: plans = [] } = useQuery({
@@ -31,11 +33,12 @@ function InstallmentsPage() {
     mutationFn: async () => {
       const amt = Number(pay.amount || 0);
       if (amt <= 0) throw new Error("Enter amount");
+      if (!shopId) throw new Error("No shop context");
       const { data: plan } = await supabase.from("installment_plans").select("paid_amount, total_amount").eq("id", pay.planId).single();
       if (!plan) throw new Error("Plan missing");
       const newPaid = Number(plan.paid_amount) + amt;
       await supabase.from("installment_payments").insert({
-        installment_plan_id: pay.planId, amount: amt, paid_date: new Date().toISOString(), status: "paid",
+        installment_plan_id: pay.planId, amount: amt, paid_date: new Date().toISOString(), status: "paid", shop_id: shopId,
       });
       await supabase.from("installment_plans").update({ paid_amount: newPaid }).eq("id", pay.planId);
     },

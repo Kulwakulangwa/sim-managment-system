@@ -20,20 +20,31 @@ export type Database = {
           full_name: string
           id: string
           phone: string
+          shop_id: string
         }
         Insert: {
           created_at?: string
           full_name: string
           id?: string
           phone: string
+          shop_id: string
         }
         Update: {
           created_at?: string
           full_name?: string
           id?: string
           phone?: string
+          shop_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "customers_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       expenses: {
         Row: {
@@ -44,6 +55,7 @@ export type Database = {
           expense_date: string
           id: string
           note: string | null
+          shop_id: string
         }
         Insert: {
           amount: number
@@ -53,6 +65,7 @@ export type Database = {
           expense_date?: string
           id?: string
           note?: string | null
+          shop_id: string
         }
         Update: {
           amount?: number
@@ -62,6 +75,7 @@ export type Database = {
           expense_date?: string
           id?: string
           note?: string | null
+          shop_id?: string
         }
         Relationships: [
           {
@@ -69,6 +83,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
             referencedColumns: ["id"]
           },
         ]
@@ -80,6 +101,7 @@ export type Database = {
           id: string
           installment_plan_id: string | null
           paid_date: string | null
+          shop_id: string
           status: Database["public"]["Enums"]["installment_status"]
         }
         Insert: {
@@ -88,6 +110,7 @@ export type Database = {
           id?: string
           installment_plan_id?: string | null
           paid_date?: string | null
+          shop_id: string
           status?: Database["public"]["Enums"]["installment_status"]
         }
         Update: {
@@ -96,6 +119,7 @@ export type Database = {
           id?: string
           installment_plan_id?: string | null
           paid_date?: string | null
+          shop_id?: string
           status?: Database["public"]["Enums"]["installment_status"]
         }
         Relationships: [
@@ -104,6 +128,13 @@ export type Database = {
             columns: ["installment_plan_id"]
             isOneToOne: false
             referencedRelation: "installment_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "installment_payments_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
             referencedColumns: ["id"]
           },
         ]
@@ -115,6 +146,7 @@ export type Database = {
           id: string
           paid_amount: number
           sale_id: string | null
+          shop_id: string
           total_amount: number
         }
         Insert: {
@@ -123,6 +155,7 @@ export type Database = {
           id?: string
           paid_amount?: number
           sale_id?: string | null
+          shop_id: string
           total_amount: number
         }
         Update: {
@@ -131,6 +164,7 @@ export type Database = {
           id?: string
           paid_amount?: number
           sale_id?: string | null
+          shop_id?: string
           total_amount?: number
         }
         Relationships: [
@@ -139,6 +173,13 @@ export type Database = {
             columns: ["sale_id"]
             isOneToOne: false
             referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "installment_plans_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
             referencedColumns: ["id"]
           },
         ]
@@ -157,6 +198,7 @@ export type Database = {
           name: string | null
           quantity: number
           sell_price: number
+          shop_id: string
         }
         Insert: {
           brand?: string | null
@@ -171,6 +213,7 @@ export type Database = {
           name?: string | null
           quantity?: number
           sell_price?: number
+          shop_id: string
         }
         Update: {
           brand?: string | null
@@ -185,8 +228,17 @@ export type Database = {
           name?: string | null
           quantity?: number
           sell_price?: number
+          shop_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -218,6 +270,7 @@ export type Database = {
           issue_description: string | null
           received_date: string
           repair_cost: number
+          shop_id: string
           status: Database["public"]["Enums"]["repair_status"]
         }
         Insert: {
@@ -228,6 +281,7 @@ export type Database = {
           issue_description?: string | null
           received_date?: string
           repair_cost?: number
+          shop_id: string
           status?: Database["public"]["Enums"]["repair_status"]
         }
         Update: {
@@ -238,6 +292,7 @@ export type Database = {
           issue_description?: string | null
           received_date?: string
           repair_cost?: number
+          shop_id?: string
           status?: Database["public"]["Enums"]["repair_status"]
         }
         Relationships: [
@@ -246,6 +301,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repairs_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
             referencedColumns: ["id"]
           },
         ]
@@ -262,6 +324,7 @@ export type Database = {
           quantity: number
           sale_date: string
           sell_price: number
+          shop_id: string
           sold_by: string | null
         }
         Insert: {
@@ -275,6 +338,7 @@ export type Database = {
           quantity?: number
           sale_date?: string
           sell_price: number
+          shop_id: string
           sold_by?: string | null
         }
         Update: {
@@ -288,6 +352,7 @@ export type Database = {
           quantity?: number
           sale_date?: string
           sell_price?: number
+          shop_id?: string
           sold_by?: string | null
         }
         Relationships: [
@@ -306,6 +371,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "sales_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "sales_sold_by_fkey"
             columns: ["sold_by"]
             isOneToOne: false
@@ -314,23 +386,67 @@ export type Database = {
           },
         ]
       }
+      shops: {
+        Row: {
+          address: string | null
+          created_at: string
+          id: string
+          name: string
+          phone: string | null
+          region: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          phone?: string | null
+          region?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          region?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
           role: Database["public"]["Enums"]["app_role"]
+          shop_id: string | null
           user_id: string
         }
         Insert: {
           id?: string
           role: Database["public"]["Enums"]["app_role"]
+          shop_id?: string | null
           user_id: string
         }
         Update: {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          shop_id?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       warranties: {
         Row: {
@@ -338,6 +454,7 @@ export type Database = {
           id: string
           period_months: number
           sale_id: string | null
+          shop_id: string
           start_date: string
           status: Database["public"]["Enums"]["warranty_status"]
         }
@@ -346,6 +463,7 @@ export type Database = {
           id?: string
           period_months?: number
           sale_id?: string | null
+          shop_id: string
           start_date?: string
           status?: Database["public"]["Enums"]["warranty_status"]
         }
@@ -354,6 +472,7 @@ export type Database = {
           id?: string
           period_months?: number
           sale_id?: string | null
+          shop_id?: string
           start_date?: string
           status?: Database["public"]["Enums"]["warranty_status"]
         }
@@ -365,6 +484,13 @@ export type Database = {
             referencedRelation: "sales"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "warranties_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
         ]
       }
       warranty_claims: {
@@ -373,6 +499,7 @@ export type Database = {
           id: string
           issue_description: string | null
           resolution: string | null
+          shop_id: string
           warranty_id: string | null
         }
         Insert: {
@@ -380,6 +507,7 @@ export type Database = {
           id?: string
           issue_description?: string | null
           resolution?: string | null
+          shop_id: string
           warranty_id?: string | null
         }
         Update: {
@@ -387,9 +515,17 @@ export type Database = {
           id?: string
           issue_description?: string | null
           resolution?: string | null
+          shop_id?: string
           warranty_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "warranty_claims_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "warranty_claims_warranty_id_fkey"
             columns: ["warranty_id"]
@@ -404,6 +540,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      current_shop_id: { Args: { _uid?: string }; Returns: string }
       get_my_role: {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
@@ -415,9 +552,19 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_shop_role: {
+        Args: { _role: Database["public"]["Enums"]["app_role"]; _uid?: string }
+        Returns: boolean
+      }
+      is_super_admin: { Args: { _uid?: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "owner" | "manager" | "cashier"
+      app_role:
+        | "super_admin"
+        | "shop_admin"
+        | "cashier"
+        | "salesperson"
+        | "technician"
       expense_category: "rent" | "electricity" | "salaries" | "other"
       installment_status: "pending" | "paid" | "overdue"
       item_condition: "new" | "used"
@@ -552,7 +699,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["owner", "manager", "cashier"],
+      app_role: [
+        "super_admin",
+        "shop_admin",
+        "cashier",
+        "salesperson",
+        "technician",
+      ],
       expense_category: ["rent", "electricity", "salaries", "other"],
       installment_status: ["pending", "paid", "overdue"],
       item_condition: ["new", "used"],
