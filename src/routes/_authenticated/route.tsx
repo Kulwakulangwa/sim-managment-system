@@ -26,6 +26,8 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+// Import the theme hook
+import { useTheme } from "@/lib/theme";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -63,6 +65,9 @@ function Layout() {
   const qc = useQueryClient();
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+
+  // Theme hook for dark mode toggle
+  const { theme, toggleTheme } = useTheme();
 
   const items: NavItem[] = isSuper
     ? [
@@ -112,11 +117,11 @@ function Layout() {
             className={cn(
               "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200",
               active
-                ? "bg-gradient-to-r from-[#C45BA0]/30 to-[#8B3A8F]/20 text-white font-medium shadow-[inset_0_1px_1px_rgba(255,255,255,0.08)]"
+                ? "bg-gradient-to-r from-pink-500/30 to-rose-500/20 text-white font-medium shadow-[inset_0_1px_1px_rgba(255,255,255,0.08)]"
                 : "text-white/60 hover:bg-white/10 hover:text-white hover:shadow-sm",
             )}
           >
-            <Icon className={cn("h-4 w-4", active ? "text-[#C45BA0]" : "text-white/40")} />
+            <Icon className={cn("h-4 w-4", active ? "text-pink-400" : "text-white/40")} />
             {t(it.label as any)}
           </Link>
         );
@@ -125,11 +130,14 @@ function Layout() {
   );
 
   return (
-    <div className="min-h-screen bg-[#F7F5FA] flex">
-      {/* Desktop sidebar – dark gradient with premium feel */}
-      <aside className="hidden lg:flex w-64 bg-gradient-to-b from-[#1F0A28] to-[#3A1442] text-white flex-col border-r border-white/5 shadow-xl">
+    <div className={cn(
+      "min-h-screen flex",
+      theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
+    )}>
+      {/* Desktop sidebar – dark gradient with pink accents */}
+      <aside className="hidden lg:flex w-64 bg-gradient-to-b from-[#1F0A28] to-[#2D1440] text-white flex-col border-r border-white/5 shadow-xl">
         <div className="p-5 flex items-center gap-3 border-b border-white/10">
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[#C45BA0] to-[#8B3A8F] shadow-lg shadow-[#C45BA0]/30">
+          <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 shadow-lg shadow-pink-500/30">
             <Smartphone className="h-5 w-5 text-white" />
           </div>
           <div>
@@ -162,6 +170,17 @@ function Layout() {
             >
               SW
             </button>
+            {/* Dark mode toggle */}
+            <button
+              onClick={toggleTheme}
+              className={cn(
+                "px-2 py-1 rounded transition",
+                "hover:bg-white/10"
+              )}
+              aria-label="Toggle theme"
+            >
+              {theme === "light" ? "🌙" : "☀️"}
+            </button>
           </div>
           <Button
             variant="ghost"
@@ -174,18 +193,27 @@ function Layout() {
         </div>
       </aside>
 
-      {/* Mobile overlay sidebar – same dark theme */}
+      {/* Mobile overlay sidebar – same dark theme with pink accents */}
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-40 flex">
-          <div className="w-64 bg-gradient-to-b from-[#1F0A28] to-[#3A1442] text-white flex flex-col shadow-2xl">
+          <div className="w-64 bg-gradient-to-b from-[#1F0A28] to-[#2D1440] text-white flex flex-col shadow-2xl">
             <div className="p-4 flex items-center gap-3 border-b border-white/10">
-              <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[#C45BA0] to-[#8B3A8F] shadow-md">
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 shadow-md">
                 <Smartphone className="h-5 w-5 text-white" />
               </div>
               <p className="text-sm font-semibold">{t("appName")}</p>
             </div>
             <div className="flex-1 overflow-y-auto py-2">{nav}</div>
             <div className="p-4 border-t border-white/10">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-white/40">Theme</span>
+                <button
+                  onClick={toggleTheme}
+                  className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition"
+                >
+                  {theme === "light" ? "🌙" : "☀️"}
+                </button>
+              </div>
               <Button
                 variant="ghost"
                 size="sm"
@@ -202,22 +230,29 @@ function Layout() {
 
       <main className="flex-1 flex flex-col min-w-0">
         {/* Mobile header – matches the sidebar theme */}
-        <header className="lg:hidden flex items-center justify-between border-b border-border p-3 bg-white/80 backdrop-blur-sm">
+        <header className={cn(
+          "lg:hidden flex items-center justify-between border-b p-3",
+          theme === "dark"
+            ? "bg-[#1a0f20] border-[#2a1a30] text-white"
+            : "bg-white/80 backdrop-blur-sm border-border text-slate-800"
+        )}>
           <button onClick={() => setMobileOpen(true)} className="p-2">
-            <Menu className="h-5 w-5 text-slate-700" />
+            <Menu className={cn("h-5 w-5", theme === "dark" ? "text-white" : "text-slate-700")} />
           </button>
-          <p className="text-sm font-semibold text-slate-800">{t("appName")}</p>
+          <p className={cn("text-sm font-semibold", theme === "dark" ? "text-white" : "text-slate-800")}>
+            {t("appName")}
+          </p>
           <div className="flex items-center gap-1 text-xs">
             <button
               onClick={() => setLang("en")}
-              className={lang === "en" ? "font-semibold text-slate-800" : "text-slate-400"}
+              className={lang === "en" ? "font-semibold" : "text-slate-400"}
             >
               EN
             </button>
             <span className="text-slate-300">·</span>
             <button
               onClick={() => setLang("sw")}
-              className={lang === "sw" ? "font-semibold text-slate-800" : "text-slate-400"}
+              className={lang === "sw" ? "font-semibold" : "text-slate-400"}
             >
               SW
             </button>
