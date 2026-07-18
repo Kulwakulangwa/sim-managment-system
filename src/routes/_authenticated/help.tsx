@@ -16,6 +16,8 @@ import {
   Search,
   Sparkles,
 } from "lucide-react";
+import { useTheme } from "@/lib/theme";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/help")({
   component: HelpPage,
@@ -124,6 +126,7 @@ const ARTICLES: Article[] = [
 ];
 
 function HelpPage() {
+  const { theme } = useTheme();
   const [q, setQ] = useState("");
   const filtered = ARTICLES.filter((a) => {
     if (!q) return true;
@@ -135,11 +138,14 @@ function HelpPage() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className={cn(
+      "space-y-6 -m-4 sm:-m-6 p-4 sm:p-6 min-h-full rounded-3xl",
+      theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
+    )}>
       {/* Header with gradient */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white shadow-xl">
-        <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-blue-500/20 blur-3xl" />
-        <div className="absolute bottom-0 left-20 h-24 w-24 rounded-full bg-emerald-500/20 blur-2xl" />
+        <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-pink-500/20 blur-3xl" />
+        <div className="absolute bottom-0 left-20 h-24 w-24 rounded-full bg-rose-500/20 blur-2xl" />
         <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="rounded-xl bg-white/10 p-3 backdrop-blur-sm">
@@ -157,24 +163,31 @@ function HelpPage() {
             <span className="text-sm">{ARTICLES.length} articles</span>
           </div>
         </div>
-        {/* Search bar inside header (optional, but we keep it below) */}
       </div>
 
       {/* Search bar */}
       <div className="relative max-w-md">
-        <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground dark:text-slate-400" />
         <Input
           placeholder="Search articles…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          className="pl-9 bg-white dark:bg-slate-800 border-0 shadow-sm focus:ring-2 focus:ring-[#C45BA0]/30"
+          className={cn(
+            "pl-9 border-0 shadow-sm focus:ring-2 focus:ring-pink-500/30",
+            theme === "dark"
+              ? "bg-slate-800 text-white placeholder-slate-400"
+              : "bg-white"
+          )}
         />
       </div>
 
       {/* Articles grid */}
       <div className="grid gap-4 md:grid-cols-2">
         {filtered.length === 0 && (
-          <div className="col-span-2 text-center py-12 text-muted-foreground">
+          <div className={cn(
+            "col-span-2 text-center py-12",
+            theme === "dark" ? "text-slate-400" : "text-muted-foreground"
+          )}>
             No articles match your search.
           </div>
         )}
@@ -183,18 +196,37 @@ function HelpPage() {
           return (
             <Card
               key={a.id}
-              className="border-0 bg-white/80 shadow-sm backdrop-blur-sm dark:bg-slate-900/80 transition hover:shadow-md hover:-translate-y-0.5 duration-200"
+              className={cn(
+                "border-0 shadow-sm backdrop-blur-sm transition hover:shadow-md hover:-translate-y-0.5 duration-200",
+                theme === "dark"
+                  ? "bg-slate-800/90 border-slate-700"
+                  : "bg-white/80"
+              )}
             >
               <CardHeader className="flex-row items-center gap-3 space-y-0 pb-2">
-                <div className="rounded-lg bg-gradient-to-br from-[#C45BA0]/20 to-[#8B3A8F]/10 p-2.5 ring-1 ring-[#C45BA0]/20">
-                  <Icon className="h-5 w-5 text-[#C45BA0]" />
+                <div className={cn(
+                  "rounded-lg p-2.5 ring-1",
+                  theme === "dark"
+                    ? "bg-pink-500/10 ring-pink-400/20"
+                    : "bg-gradient-to-br from-pink-500/20 to-rose-500/10 ring-pink-500/20"
+                )}>
+                  <Icon className={cn(
+                    "h-5 w-5",
+                    theme === "dark" ? "text-pink-400" : "text-[#C45BA0]"
+                  )} />
                 </div>
-                <h2 className="text-base font-semibold text-slate-800 dark:text-white">
+                <h2 className={cn(
+                  "text-base font-semibold",
+                  theme === "dark" ? "text-white" : "text-slate-800"
+                )}>
                   {a.title}
                 </h2>
               </CardHeader>
               <CardContent>
-                <ol className="list-decimal pl-5 space-y-1.5 text-sm text-muted-foreground">
+                <ol className={cn(
+                  "list-decimal pl-5 space-y-1.5 text-sm",
+                  theme === "dark" ? "text-slate-300" : "text-muted-foreground"
+                )}>
                   {a.body.map((line, i) => (
                     <li key={i}>{line}</li>
                   ))}
