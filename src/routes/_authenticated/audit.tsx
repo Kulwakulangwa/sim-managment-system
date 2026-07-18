@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -6,10 +6,31 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 
+// ─── Route Guard ──────────────────────────────────────────────
 export const Route = createFileRoute("/_authenticated/audit")({
+  beforeLoad: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw redirect({ to: "/auth" });
+
+    // Check if user is super_admin
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .single();
+
+    const role = roleData?.role;
+    const isSuperAdminByEmail = user.email === "kulwakulangwa@gmail.com";
+    const isSuperAdmin = role === "super_admin" || isSuperAdminByEmail;
+
+    if (!isSuperAdmin) {
+      throw redirect({ to: "/dashboard" });
+    }
+  },
   component: AuditPage,
 });
 
+// ─── Component ─────────────────────────────────────────────────
 const ACTION_COLOR: Record<string, string> = {
   insert: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
   update: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
