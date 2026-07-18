@@ -47,7 +47,6 @@ type FormState = {
   brand: string;
   model: string;
   name: string;
-  imei: string;
   condition: "new" | "used";
   buy_price: string;
   sell_price: string;
@@ -61,7 +60,6 @@ const empty: FormState = {
   brand: "",
   model: "",
   name: "",
-  imei: "",
   condition: "new",
   buy_price: "",
   sell_price: "",
@@ -99,7 +97,10 @@ function InventoryPage() {
       .from("public")
       .upload(filePath, file);
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      console.error("Upload error:", uploadError);
+      throw new Error("Failed to upload photo. Please check storage bucket permissions.");
+    }
 
     const { data: { publicUrl } } = supabase.storage
       .from("public")
@@ -110,23 +111,18 @@ function InventoryPage() {
 
   const upsert = useMutation({
     mutationFn: async () => {
-      // Validate: IMEI is required for phones
-      if (form.item_type === "phone" && !form.imei.trim()) {
-        throw new Error("IMEI is required for phones");
-      }
-
       const payload = {
         item_type: form.item_type,
         brand: form.brand || null,
         model: form.model || null,
         name: form.name || null,
-        imei: form.imei || null,
         condition: form.condition,
         buy_price: Number(form.buy_price || 0),
         sell_price: Number(form.sell_price || 0),
         quantity: Number(form.quantity || 0),
         low_stock_threshold: Number(form.low_stock_threshold || 1),
         photo_url: form.photo_url || null,
+        // IMEI is no longer stored in inventory
       };
 
       if (editingId) {
@@ -159,7 +155,7 @@ function InventoryPage() {
       setForm({ ...form, photo_url: url });
       toast.success("Photo uploaded");
     } catch (err) {
-      toast.error("Failed to upload photo");
+      toast.error(err instanceof Error ? err.message : "Failed to upload photo");
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -172,7 +168,7 @@ function InventoryPage() {
 
   const filtered = items.filter((i) => {
     const s = q.toLowerCase();
-    return !s || `${i.brand ?? ""} ${i.model ?? ""} ${i.name ?? ""} ${i.imei ?? ""}`.toLowerCase().includes(s);
+    return !s || `${i.brand ?? ""} ${i.model ?? ""} ${i.name ?? ""}`.toLowerCase().includes(s);
   });
 
   const openEdit = (i: typeof items[number]) => {
@@ -182,7 +178,6 @@ function InventoryPage() {
       brand: i.brand ?? "",
       model: i.model ?? "",
       name: i.name ?? "",
-      imei: i.imei ?? "",
       condition: (i.condition ?? "new") as "new" | "used",
       buy_price: String(i.buy_price),
       sell_price: String(i.sell_price),
@@ -219,16 +214,6 @@ function InventoryPage() {
                   <>
                     <div><Label>{t("brand")}</Label><Input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} /></div>
                     <div><Label>{t("model")}</Label><Input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} /></div>
-                    <div className="col-span-2">
-                      <Label className="text-red-500">IMEI *</Label>
-                      <Input
-                        value={form.imei}
-                        onChange={(e) => setForm({ ...form, imei: e.target.value })}
-                        placeholder="Required for phones"
-                        className="border-red-300 focus:border-red-500"
-                      />
-                      {!form.imei.trim() && <p className="text-xs text-red-500 mt-1">IMEI is required</p>}
-                    </div>
                     <div>
                       <Label>{t("condition")}</Label>
                       <Select value={form.condition} onValueChange={(v) => setForm({ ...form, condition: v as "new" | "used" })}>
@@ -291,10 +276,7 @@ function InventoryPage() {
               </div>
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setOpen(false)}>{t("cancel")}</Button>
-                <Button
-                  onClick={() => upsert.mutate()}
-                  disabled={upsert.isPending || (form.item_type === "phone" && !form.imei.trim())}
-                >
+                <Button onClick={() => upsert.mutate()} disabled={upsert.isPending}>
                   {t("save")}
                 </Button>
               </DialogFooter>
@@ -315,7 +297,6 @@ function InventoryPage() {
                 <TableHead>Photo</TableHead>
                 <TableHead>{t("itemType")}</TableHead>
                 <TableHead>{t("name")}/{t("model")}</TableHead>
-                <TableHead>{t("imei")}</TableHead>
                 <TableHead className="text-right">{t("buyPrice")}</TableHead>
                 <TableHead className="text-right">{t("sellPrice")}</TableHead>
                 <TableHead className="text-right">{t("stock")}</TableHead>
@@ -324,7 +305,7 @@ function InventoryPage() {
             </TableHeader>
             <TableBody>
               {filtered.length === 0 && (
-                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-6">{t("empty")}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">{t("empty")}</TableCell></TableRow>
               )}
               {filtered.map((i) => {
                 const low = i.quantity <= i.low_stock_threshold;
@@ -339,7 +320,6 @@ function InventoryPage() {
                     </TableCell>
                     <TableCell>{i.item_type === "phone" ? t("phoneItem") : t("accessoryItem")}</TableCell>
                     <TableCell className="font-medium">{i.item_type === "phone" ? `${i.brand ?? ""} ${i.model ?? ""}`.trim() : i.name}</TableCell>
-                    <TableCell className="font-mono text-xs">{i.imei ?? "—"}</TableCell>
                     <TableCell className="text-right">{formatTZS(i.buy_price)}</TableCell>
                     <TableCell className="text-right">{formatTZS(i.sell_price)}</TableCell>
                     <TableCell className="text-right">
