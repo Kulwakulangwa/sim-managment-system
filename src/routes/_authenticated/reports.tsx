@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, DollarSign, Receipt, BarChart3, Package, ShoppingCart } from "lucide-react";
+import { useTheme } from "@/lib/theme";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/reports")({ component: ReportsPage });
 
@@ -19,7 +21,6 @@ const TILE_GRADIENTS: Record<string, string> = {
 };
 
 // ─── Stat Card ────────────────────────────────────────────────
-// Reusable component that matches the dashboard style.
 function StatCard({
   label,
   value,
@@ -32,9 +33,9 @@ function StatCard({
   badge: keyof typeof TILE_GRADIENTS;
 }) {
   return (
-    <div className="rounded-2xl bg-white/80 backdrop-blur-sm border border-black/5 shadow-sm hover:shadow-md transition-shadow p-4 flex flex-col gap-3 dark:bg-slate-900/80">
+    <div className="rounded-2xl bg-white/80 backdrop-blur-sm border border-black/5 shadow-sm hover:shadow-md transition-shadow p-4 flex flex-col gap-3 dark:bg-slate-800/90 dark:border-slate-700/50">
       <div className="flex items-center justify-between">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground dark:text-slate-400">{label}</p>
         <span
           className={`inline-flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-sm ${TILE_GRADIENTS[badge]}`}
         >
@@ -50,6 +51,7 @@ function StatCard({
 
 function ReportsPage() {
   const { t } = useI18n();
+  const { theme } = useTheme();
 
   const { data } = useQuery({
     queryKey: ["reports"],
@@ -84,11 +86,14 @@ function ReportsPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className={cn(
+      "space-y-6 -m-4 sm:-m-6 p-4 sm:p-6 min-h-full rounded-3xl",
+      theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
+    )}>
       {/* Header with gradient */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white shadow-xl">
-        <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-blue-500/20 blur-3xl" />
-        <div className="absolute bottom-0 left-20 h-24 w-24 rounded-full bg-emerald-500/20 blur-2xl" />
+        <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-pink-500/20 blur-3xl" />
+        <div className="absolute bottom-0 left-20 h-24 w-24 rounded-full bg-rose-500/20 blur-2xl" />
         <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold">{t("reports")}</h1>
@@ -113,9 +118,17 @@ function ReportsPage() {
       {/* Tables grid */}
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Best Sellers */}
-        <Card className="border-0 bg-white/80 shadow-sm backdrop-blur-sm dark:bg-slate-900/80">
+        <Card className={cn(
+          "border-0 shadow-sm backdrop-blur-sm",
+          theme === "dark"
+            ? "bg-slate-800/90 border-slate-700"
+            : "bg-white/80"
+        )}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className={cn(
+              "text-base flex items-center gap-2",
+              theme === "dark" ? "text-slate-200" : ""
+            )}>
               <TrendingUp className="h-4 w-4 text-emerald-500" />
               {t("bestSellers")}
             </CardTitle>
@@ -124,22 +137,25 @@ function ReportsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Model</TableHead>
-                  <TableHead className="text-right">{t("unitsSold")}</TableHead>
+                  <TableHead className={theme === "dark" ? "text-slate-300" : ""}>Model</TableHead>
+                  <TableHead className={cn("text-right", theme === "dark" ? "text-slate-300" : "")}>{t("unitsSold")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {(data?.best ?? []).length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={2} className="text-center py-4 text-muted-foreground">
+                    <TableCell colSpan={2} className={cn("text-center py-4", theme === "dark" ? "text-slate-400" : "text-muted-foreground")}>
                       {t("empty")}
                     </TableCell>
                   </TableRow>
                 )}
                 {(data?.best ?? []).map(([k, v]) => (
-                  <TableRow key={k} className="hover:bg-muted/50 transition">
-                    <TableCell className="font-medium">{k}</TableCell>
-                    <TableCell className="text-right">{v}</TableCell>
+                  <TableRow key={k} className={cn(
+                    "transition",
+                    theme === "dark" ? "hover:bg-slate-700/50" : "hover:bg-muted/50"
+                  )}>
+                    <TableCell className={cn("font-medium", theme === "dark" ? "text-slate-200" : "")}>{k}</TableCell>
+                    <TableCell className={cn("text-right", theme === "dark" ? "text-slate-300" : "")}>{v}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -148,9 +164,17 @@ function ReportsPage() {
         </Card>
 
         {/* Stock Report */}
-        <Card className="border-0 bg-white/80 shadow-sm backdrop-blur-sm dark:bg-slate-900/80">
+        <Card className={cn(
+          "border-0 shadow-sm backdrop-blur-sm",
+          theme === "dark"
+            ? "bg-slate-800/90 border-slate-700"
+            : "bg-white/80"
+        )}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className={cn(
+              "text-base flex items-center gap-2",
+              theme === "dark" ? "text-slate-200" : ""
+            )}>
               <Package className="h-4 w-4 text-amber-500" />
               {t("stockReport")}
             </CardTitle>
@@ -159,8 +183,8 @@ function ReportsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead className="text-right">{t("stock")}</TableHead>
+                  <TableHead className={theme === "dark" ? "text-slate-300" : ""}>Item</TableHead>
+                  <TableHead className={cn("text-right", theme === "dark" ? "text-slate-300" : "")}>{t("stock")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -168,10 +192,17 @@ function ReportsPage() {
                   const label = i.item_type === "phone" ? `${i.brand ?? ""} ${i.model ?? ""}`.trim() : i.name;
                   const low = i.quantity <= i.low_stock_threshold;
                   return (
-                    <TableRow key={i.id} className="hover:bg-muted/50 transition">
-                      <TableCell className="font-medium">{label}</TableCell>
+                    <TableRow key={i.id} className={cn(
+                      "transition",
+                      theme === "dark" ? "hover:bg-slate-700/50" : "hover:bg-muted/50"
+                    )}>
+                      <TableCell className={cn("font-medium", theme === "dark" ? "text-slate-200" : "")}>{label}</TableCell>
                       <TableCell className="text-right">
-                        {low ? <Badge variant="destructive">{i.quantity}</Badge> : i.quantity}
+                        {low ? (
+                          <Badge variant="destructive">{i.quantity}</Badge>
+                        ) : (
+                          <span className={theme === "dark" ? "text-slate-300" : ""}>{i.quantity}</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
