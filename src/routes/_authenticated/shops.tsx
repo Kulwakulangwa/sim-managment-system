@@ -75,7 +75,7 @@ function ShopsPage() {
   const [openShop, setOpenShop] = useState(false);
   const [shopForm, setShopForm] = useState({ name: "", phone: "", address: "", region: "" });
   const [adminOpen, setAdminOpen] = useState<string | null>(null);
-  const [adminForm, setAdminForm] = useState({ email: "", password: "", full_name: "", phone: "" });
+  const [adminForm, setAdminForm] = useState({ email: "", password: "", full_name: "", phone: "", validity_months: 12 });
 
   // Reset password state
   const [resetOpen, setResetOpen] = useState(false);
@@ -115,10 +115,13 @@ function ShopsPage() {
   });
 
   const addAdmin = useMutation({
-    mutationFn: async (shop_id: string) => createAdminFn({ data: { shop_id, ...adminForm } }),
+    mutationFn: async (shop_id: string) => {
+      // The server function now expects a `validity_months` field
+      return createAdminFn({ data: { shop_id, ...adminForm } });
+    },
     onSuccess: () => {
       setAdminOpen(null);
-      setAdminForm({ email: "", password: "", full_name: "", phone: "" });
+      setAdminForm({ email: "", password: "", full_name: "", phone: "", validity_months: 12 });
       toast.success(t("save"));
       qc.invalidateQueries({ queryKey: ["shop-admins"] });
     },
@@ -271,13 +274,15 @@ function ShopsPage() {
                         <span className={theme === "dark" ? "text-slate-200" : ""}>
                           {admin.profiles?.full_name || admin.profiles?.email || "Admin"}
                         </span>
-                        {admin.expires_at && (
+                        {admin.expires_at ? (
                           <span className={cn(
                             "text-xs",
-                            isExpired ? "text-red-500" : "text-muted-foreground"
+                            isExpired ? "text-red-500 font-medium" : "text-muted-foreground"
                           )}>
-                            {isExpired ? "Expired" : new Date(admin.expires_at).toLocaleDateString()}
+                            {isExpired ? "Expired" : `Expires: ${new Date(admin.expires_at).toLocaleDateString()}`}
                           </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">No expiry</span>
                         )}
                         <Button
                           size="sm"
@@ -359,6 +364,17 @@ function ShopsPage() {
                               onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })}
                               className={theme === "dark" ? "border-slate-700 bg-slate-900 text-white" : ""}
                             />
+                          </div>
+                          <div>
+                            <Label className={theme === "dark" ? "text-slate-300" : ""}>Validity (months)</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              value={adminForm.validity_months}
+                              onChange={(e) => setAdminForm({ ...adminForm, validity_months: Number(e.target.value) })}
+                              className={theme === "dark" ? "border-slate-700 bg-slate-900 text-white" : ""}
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">The admin will expire after this many months.</p>
                           </div>
                         </div>
                         <DialogFooter>
