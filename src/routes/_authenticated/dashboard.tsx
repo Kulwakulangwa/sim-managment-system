@@ -17,13 +17,14 @@ import {
   Package,
   Receipt,
 } from "lucide-react";
+import { useTheme } from "@/lib/theme";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 
-// ---- Theme tokens (inspired by the screenshot) ----
-// These gradients and colors give the dashboard its signature look.
+// ─── Theme tokens ──────────────────────────────────────────
 const TILE_GRADIENTS: Record<string, string> = {
   ember: "bg-gradient-to-br from-[#F2994A] to-[#F2C94C]",
   wine: "bg-gradient-to-br from-[#6B2338] to-[#3C1524]",
@@ -32,7 +33,6 @@ const TILE_GRADIENTS: Record<string, string> = {
 };
 
 // ─── Stat Card ────────────────────────────────────────────
-// A clean card with a colored icon badge and value.
 function StatCard({
   label,
   value,
@@ -45,7 +45,7 @@ function StatCard({
   badge: keyof typeof TILE_GRADIENTS;
 }) {
   return (
-    <div className="rounded-2xl bg-white border border-black/5 shadow-sm hover:shadow-md transition-shadow p-4 flex flex-col gap-3">
+    <div className="rounded-2xl bg-white dark:bg-slate-800/90 border border-black/5 dark:border-slate-700/50 shadow-sm hover:shadow-md transition-shadow p-4 flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <span
           className={`inline-flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-sm ${TILE_GRADIENTS[badge]}`}
@@ -54,15 +54,14 @@ function StatCard({
         </span>
       </div>
       <div>
-        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{label}</p>
-        <p className="text-lg sm:text-xl font-semibold text-slate-800 truncate mt-0.5">{value}</p>
+        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-400">{label}</p>
+        <p className="text-lg sm:text-xl font-semibold text-slate-800 dark:text-white truncate mt-0.5">{value}</p>
       </div>
     </div>
   );
 }
 
 // ─── Progress Ring ────────────────────────────────────────
-// Displays profit margin as a circular gauge, matching the reference design.
 function ProgressRing({ percent, label }: { percent: number; label: string }) {
   const clamped = Math.max(0, Math.min(100, percent));
   const radius = 72;
@@ -80,7 +79,6 @@ function ProgressRing({ percent, label }: { percent: number; label: string }) {
             <stop offset="100%" stopColor="#8B3A8F" />
           </linearGradient>
         </defs>
-        {/* Background circle */}
         <circle
           stroke="rgba(255,255,255,0.08)"
           fill="transparent"
@@ -89,7 +87,6 @@ function ProgressRing({ percent, label }: { percent: number; label: string }) {
           cx={radius}
           cy={radius}
         />
-        {/* Progress circle */}
         <circle
           stroke="url(#ringGradient)"
           fill="transparent"
@@ -112,7 +109,6 @@ function ProgressRing({ percent, label }: { percent: number; label: string }) {
 }
 
 // ─── Quick Action Button ──────────────────────────────────
-// Tappable tile with a gradient background and icon.
 function QuickAction({
   label,
   icon: Icon,
@@ -139,6 +135,7 @@ function QuickAction({
 function Dashboard() {
   const { t } = useI18n();
   const { data: myRole } = useMyRole();
+  const { theme } = useTheme();
   const isSuper = myRole?.isSuperAdmin ?? false;
 
   const { data: stats } = useQuery({
@@ -180,10 +177,8 @@ function Dashboard() {
     },
   });
 
-  // Super admin view
   if (isSuper) return <PlatformDashboard />;
 
-  // Define stat cards with their respective gradient badges
   const cards: { label: string; value: string; icon: React.ElementType; badge: keyof typeof TILE_GRADIENTS }[] = [
     { label: t("todaySales"), value: formatTZS(stats?.today ?? 0), icon: ShoppingCart, badge: "ember" },
     { label: t("monthSales"), value: formatTZS(stats?.month ?? 0), icon: TrendingUp, badge: "slate" },
@@ -194,23 +189,22 @@ function Dashboard() {
   ];
 
   return (
-    <div className="space-y-6 bg-[#F7F5FA] -m-4 sm:-m-6 p-4 sm:p-6 min-h-full rounded-3xl">
-      {/* Header */}
+    <div className={cn(
+      "space-y-6 -m-4 sm:-m-6 p-4 sm:p-6 min-h-full rounded-3xl",
+      theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
+    )}>
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">{t("dashboard")}</h1>
-        <p className="text-sm text-slate-400">{t("tagline")}</p>
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">{t("dashboard")}</h1>
+        <p className="text-sm text-slate-400 dark:text-slate-400">{t("tagline")}</p>
       </div>
 
-      {/* Stats grid – responsive: 2 cols on mobile, 3 on tablet, 6 on desktop */}
       <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
         {cards.map((c) => (
           <StatCard key={c.label} {...c} />
         ))}
       </div>
 
-      {/* Lower section: Progress ring + Quick actions */}
       <div className="grid gap-4 lg:grid-cols-3">
-        {/* Progress ring card – dark purple gradient */}
         <div className="lg:col-span-2 rounded-3xl bg-gradient-to-br from-[#3A1442] to-[#1F0A28] p-6 flex flex-col sm:flex-row items-center gap-6">
           <ProgressRing percent={stats?.marginPct ?? 0} label={t("monthProfit")} />
           <div className="text-white/90 space-y-2 text-center sm:text-left">
@@ -222,7 +216,6 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* Quick actions – 2 columns on mobile, 1 on desktop (since we want them stacked) */}
         <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
           <QuickAction label={t("todaySales")} icon={Plus} tone="crimson" />
           <QuickAction label={t("lowStock")} icon={Package} tone="ember" />
@@ -237,6 +230,7 @@ function Dashboard() {
 // ─── Platform Dashboard (Super Admin) ──────────────────────
 function PlatformDashboard() {
   const { t } = useI18n();
+  const { theme } = useTheme();
   const { data: stats } = useQuery({
     queryKey: ["platform-stats"],
     queryFn: async () => {
@@ -271,9 +265,12 @@ function PlatformDashboard() {
   ];
 
   return (
-    <div className="space-y-6 bg-[#F7F5FA] -m-4 sm:-m-6 p-4 sm:p-6 min-h-full rounded-3xl">
+    <div className={cn(
+      "space-y-6 -m-4 sm:-m-6 p-4 sm:p-6 min-h-full rounded-3xl",
+      theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
+    )}>
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">{t("platformDashboard")}</h1>
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">{t("platformDashboard")}</h1>
       </div>
       <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
         {cards.map((c) => (
