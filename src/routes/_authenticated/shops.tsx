@@ -11,16 +11,19 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Pause, Play, Trash2, UserPlus, KeyRound } from "lucide-react";
+import { Plus, Pause, Play, Trash2, UserPlus, KeyRound, CalendarClock } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { createShop, updateShop, deleteShop, createShopAdmin, resetShopAdminPassword } from "@/lib/admin.functions";
+import { createShop, updateShop, deleteShop, createShopAdmin, resetShopAdminPassword, extendShopAdminExpiration } from "@/lib/admin.functions";
+import { useTheme } from "@/lib/theme";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/shops")({ component: ShopsPage });
 
 function ShopsPage() {
   const { t } = useI18n();
   const qc = useQueryClient();
+  const { theme } = useTheme();
 
   // Role detection
   const { data: myRole } = useMyRole();
@@ -47,7 +50,7 @@ function ShopsPage() {
     },
   });
 
-  // Fetch shop admins
+  // Fetch shop admins with expiration
   const { data: shopAdmins = [] } = useQuery({
     queryKey: ["shop-admins"],
     enabled: !!isSuper,
@@ -67,6 +70,7 @@ function ShopsPage() {
   const deleteShopFn = useServerFn(deleteShop);
   const createAdminFn = useServerFn(createShopAdmin);
   const resetPasswordFn = useServerFn(resetShopAdminPassword);
+  const extendExpiryFn = useServerFn(extendShopAdminExpiration);
 
   const [openShop, setOpenShop] = useState(false);
   const [shopForm, setShopForm] = useState({ name: "", phone: "", address: "", region: "" });
@@ -77,6 +81,11 @@ function ShopsPage() {
   const [resetOpen, setResetOpen] = useState(false);
   const [resetUserId, setResetUserId] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState("");
+
+  // Extend expiration state
+  const [extendOpen, setExtendOpen] = useState(false);
+  const [extendUserId, setExtendUserId] = useState<string | null>(null);
+  const [extendMonths, setExtendMonths] = useState(12);
 
   const add = useMutation({
     mutationFn: async () => createShopFn({ data: shopForm }),
@@ -131,58 +140,86 @@ function ShopsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const extendExpiry = useMutation({
+    mutationFn: async () => {
+      if (!extendUserId) throw new Error("No user selected");
+      if (extendMonths < 1) throw new Error("Must add at least 1 month");
+      await extendExpiryFn({ data: { user_id: extendUserId, additional_months: extendMonths } });
+    },
+    onSuccess: () => {
+      toast.success(`Expiration extended by ${extendMonths} months`);
+      qc.invalidateQueries({ queryKey: ["shop-admins"] });
+      setExtendOpen(false);
+      setExtendMonths(12);
+      setExtendUserId(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   if (!isSuper) return <div className="text-muted-foreground">Forbidden</div>;
 
   return (
-    <div className="space-y-4">
+    <div className={cn(
+      "space-y-4 -m-4 sm:-m-6 p-4 sm:p-6 min-h-full rounded-3xl",
+      theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
+    )}>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{t("shops")}</h1>
+        <h1 className={cn(
+          "text-2xl font-bold",
+          theme === "dark" ? "text-white" : "text-slate-800"
+        )}>
+          {t("shops")}
+        </h1>
         <Dialog open={openShop} onOpenChange={setOpenShop}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:shadow-lg hover:shadow-pink-500/30 transition-all">
               <Plus className="mr-2 h-4 w-4" />
               {t("createShop")}
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className={theme === "dark" ? "bg-slate-800 border-slate-700 text-white" : ""}>
             <DialogHeader>
-              <DialogTitle>{t("createShop")}</DialogTitle>
+              <DialogTitle className={theme === "dark" ? "text-white" : ""}>{t("createShop")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
               <div>
-                <Label>{t("name")}</Label>
+                <Label className={theme === "dark" ? "text-slate-300" : ""}>{t("name")}</Label>
                 <Input
                   value={shopForm.name}
                   onChange={(e) => setShopForm({ ...shopForm, name: e.target.value })}
+                  className={theme === "dark" ? "border-slate-700 bg-slate-900 text-white" : ""}
                 />
               </div>
               <div>
-                <Label>{t("phone")}</Label>
+                <Label className={theme === "dark" ? "text-slate-300" : ""}>{t("phone")}</Label>
                 <Input
                   value={shopForm.phone}
                   onChange={(e) => setShopForm({ ...shopForm, phone: e.target.value })}
+                  className={theme === "dark" ? "border-slate-700 bg-slate-900 text-white" : ""}
                 />
               </div>
               <div>
-                <Label>{t("region")}</Label>
+                <Label className={theme === "dark" ? "text-slate-300" : ""}>{t("region")}</Label>
                 <Input
                   value={shopForm.region}
                   onChange={(e) => setShopForm({ ...shopForm, region: e.target.value })}
+                  className={theme === "dark" ? "border-slate-700 bg-slate-900 text-white" : ""}
                 />
               </div>
               <div>
-                <Label>{t("address")}</Label>
+                <Label className={theme === "dark" ? "text-slate-300" : ""}>{t("address")}</Label>
                 <Input
                   value={shopForm.address}
                   onChange={(e) => setShopForm({ ...shopForm, address: e.target.value })}
+                  className={theme === "dark" ? "border-slate-700 bg-slate-900 text-white" : ""}
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setOpenShop(false)}>
+              <Button variant="ghost" onClick={() => setOpenShop(false)} className={theme === "dark" ? "text-slate-300 hover:text-white hover:bg-slate-700" : ""}>
                 {t("cancel")}
               </Button>
-              <Button onClick={() => add.mutate()} disabled={add.isPending || !shopForm.name}>
+              <Button onClick={() => add.mutate()} disabled={add.isPending || !shopForm.name} className="bg-gradient-to-r from-pink-500 to-rose-500 text-white">
                 {t("save")}
               </Button>
             </DialogFooter>
@@ -190,33 +227,39 @@ function ShopsPage() {
         </Dialog>
       </div>
 
-      <Card className="p-4 overflow-x-auto">
+      <Card className={cn(
+        "p-4 overflow-x-auto",
+        theme === "dark"
+          ? "bg-slate-800/90 border-slate-700"
+          : "bg-white/80"
+      )}>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{t("name")}</TableHead>
-              <TableHead>{t("phone")}</TableHead>
-              <TableHead>{t("region")}</TableHead>
-              <TableHead>{t("status")}</TableHead>
-              <TableHead>Shop Admin</TableHead>
-              <TableHead className="text-right">{t("actions")}</TableHead>
+              <TableHead className={theme === "dark" ? "text-slate-300" : ""}>{t("name")}</TableHead>
+              <TableHead className={theme === "dark" ? "text-slate-300" : ""}>{t("phone")}</TableHead>
+              <TableHead className={theme === "dark" ? "text-slate-300" : ""}>{t("region")}</TableHead>
+              <TableHead className={theme === "dark" ? "text-slate-300" : ""}>{t("status")}</TableHead>
+              <TableHead className={theme === "dark" ? "text-slate-300" : ""}>Shop Admin</TableHead>
+              <TableHead className={cn("text-right", theme === "dark" ? "text-slate-300" : "")}>{t("actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {shops.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                <TableCell colSpan={6} className={cn("text-center py-6", theme === "dark" ? "text-slate-400" : "text-muted-foreground")}>
                   {t("empty")}
                 </TableCell>
               </TableRow>
             )}
             {shops.map((s) => {
               const admin = shopAdmins.find((a) => a.shop_id === s.id);
+              const isExpired = admin && admin.expires_at && new Date(admin.expires_at) < new Date();
               return (
-                <TableRow key={s.id}>
-                  <TableCell className="font-medium">{s.name}</TableCell>
-                  <TableCell>{s.phone ?? "—"}</TableCell>
-                  <TableCell>{s.region ?? "—"}</TableCell>
+                <TableRow key={s.id} className={theme === "dark" ? "hover:bg-slate-700/50" : "hover:bg-muted/50"}>
+                  <TableCell className={cn("font-medium", theme === "dark" ? "text-slate-200" : "")}>{s.name}</TableCell>
+                  <TableCell className={theme === "dark" ? "text-slate-300" : ""}>{s.phone ?? "—"}</TableCell>
+                  <TableCell className={theme === "dark" ? "text-slate-300" : ""}>{s.region ?? "—"}</TableCell>
                   <TableCell>
                     <Badge variant={s.status === "active" ? "default" : "secondary"}>
                       {t(s.status === "active" ? "active" : "suspendedShops")}
@@ -224,8 +267,18 @@ function ShopsPage() {
                   </TableCell>
                   <TableCell>
                     {admin ? (
-                      <div className="flex items-center gap-2">
-                        <span>{admin.profiles?.full_name || admin.profiles?.email || "Admin"}</span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={theme === "dark" ? "text-slate-200" : ""}>
+                          {admin.profiles?.full_name || admin.profiles?.email || "Admin"}
+                        </span>
+                        {admin.expires_at && (
+                          <span className={cn(
+                            "text-xs",
+                            isExpired ? "text-red-500" : "text-muted-foreground"
+                          )}>
+                            {isExpired ? "Expired" : new Date(admin.expires_at).toLocaleDateString()}
+                          </span>
+                        )}
                         <Button
                           size="sm"
                           variant="outline"
@@ -238,6 +291,18 @@ function ShopsPage() {
                           <KeyRound className="h-3 w-3 mr-1" />
                           Reset
                         </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setExtendUserId(admin.user_id);
+                            setExtendOpen(true);
+                          }}
+                          className="h-7 px-2 text-xs"
+                        >
+                          <CalendarClock className="h-3 w-3 mr-1" />
+                          Extend
+                        </Button>
                       </div>
                     ) : (
                       <span className="text-muted-foreground text-sm">No admin</span>
@@ -249,52 +314,58 @@ function ShopsPage() {
                       onOpenChange={(v) => setAdminOpen(v ? s.id : null)}
                     >
                       <DialogTrigger asChild>
-                        <Button size="sm" variant="outline">
+                        <Button size="sm" variant="outline" className={theme === "dark" ? "border-slate-600 text-slate-300 hover:bg-slate-700" : ""}>
                           <UserPlus className="h-4 w-4 mr-1" />
                           {t("createShopAdmin")}
                         </Button>
                       </DialogTrigger>
-                      <DialogContent>
+                      <DialogContent className={theme === "dark" ? "bg-slate-800 border-slate-700 text-white" : ""}>
                         <DialogHeader>
-                          <DialogTitle>{t("createShopAdmin")} — {s.name}</DialogTitle>
+                          <DialogTitle className={theme === "dark" ? "text-white" : ""}>
+                            {t("createShopAdmin")} — {s.name}
+                          </DialogTitle>
                         </DialogHeader>
                         <div className="space-y-3">
                           <div>
-                            <Label>{t("fullName")}</Label>
+                            <Label className={theme === "dark" ? "text-slate-300" : ""}>{t("fullName")}</Label>
                             <Input
                               value={adminForm.full_name}
                               onChange={(e) => setAdminForm({ ...adminForm, full_name: e.target.value })}
+                              className={theme === "dark" ? "border-slate-700 bg-slate-900 text-white" : ""}
                             />
                           </div>
                           <div>
-                            <Label>{t("phone")}</Label>
+                            <Label className={theme === "dark" ? "text-slate-300" : ""}>{t("phone")}</Label>
                             <Input
                               value={adminForm.phone}
                               onChange={(e) => setAdminForm({ ...adminForm, phone: e.target.value })}
+                              className={theme === "dark" ? "border-slate-700 bg-slate-900 text-white" : ""}
                             />
                           </div>
                           <div>
-                            <Label>{t("email")}</Label>
+                            <Label className={theme === "dark" ? "text-slate-300" : ""}>{t("email")}</Label>
                             <Input
                               type="email"
                               value={adminForm.email}
                               onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })}
+                              className={theme === "dark" ? "border-slate-700 bg-slate-900 text-white" : ""}
                             />
                           </div>
                           <div>
-                            <Label>{t("password")}</Label>
+                            <Label className={theme === "dark" ? "text-slate-300" : ""}>{t("password")}</Label>
                             <Input
                               type="password"
                               value={adminForm.password}
                               onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })}
+                              className={theme === "dark" ? "border-slate-700 bg-slate-900 text-white" : ""}
                             />
                           </div>
                         </div>
                         <DialogFooter>
-                          <Button variant="ghost" onClick={() => setAdminOpen(null)}>
+                          <Button variant="ghost" onClick={() => setAdminOpen(null)} className={theme === "dark" ? "text-slate-300 hover:text-white hover:bg-slate-700" : ""}>
                             {t("cancel")}
                           </Button>
-                          <Button onClick={() => addAdmin.mutate(s.id)} disabled={addAdmin.isPending}>
+                          <Button onClick={() => addAdmin.mutate(s.id)} disabled={addAdmin.isPending} className="bg-gradient-to-r from-pink-500 to-rose-500 text-white">
                             {t("save")}
                           </Button>
                         </DialogFooter>
@@ -322,26 +393,61 @@ function ShopsPage() {
 
       {/* Reset Password Dialog */}
       <Dialog open={resetOpen} onOpenChange={(v) => setResetOpen(v)}>
-        <DialogContent>
+        <DialogContent className={theme === "dark" ? "bg-slate-800 border-slate-700 text-white" : ""}>
           <DialogHeader>
-            <DialogTitle>Reset Shop Admin Password</DialogTitle>
+            <DialogTitle className={theme === "dark" ? "text-white" : ""}>Reset Shop Admin Password</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <Label>New Password</Label>
+            <Label className={theme === "dark" ? "text-slate-300" : ""}>New Password</Label>
             <Input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="Enter new password (min 6 characters)"
+              className={theme === "dark" ? "border-slate-700 bg-slate-900 text-white" : ""}
             />
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setResetOpen(false)}>Cancel</Button>
+            <Button variant="ghost" onClick={() => setResetOpen(false)} className={theme === "dark" ? "text-slate-300 hover:text-white hover:bg-slate-700" : ""}>
+              Cancel
+            </Button>
             <Button
               onClick={() => resetPassword.mutate()}
               disabled={resetPassword.isPending}
+              className="bg-gradient-to-r from-pink-500 to-rose-500 text-white"
             >
               {resetPassword.isPending ? "Resetting..." : "Reset Password"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Extend Expiration Dialog */}
+      <Dialog open={extendOpen} onOpenChange={(v) => setExtendOpen(v)}>
+        <DialogContent className={theme === "dark" ? "bg-slate-800 border-slate-700 text-white" : ""}>
+          <DialogHeader>
+            <DialogTitle className={theme === "dark" ? "text-white" : ""}>Extend Shop Admin Expiration</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label className={theme === "dark" ? "text-slate-300" : ""}>Additional Months</Label>
+            <Input
+              type="number"
+              value={extendMonths}
+              onChange={(e) => setExtendMonths(Number(e.target.value))}
+              min={1}
+              className={theme === "dark" ? "border-slate-700 bg-slate-900 text-white" : ""}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setExtendOpen(false)} className={theme === "dark" ? "text-slate-300 hover:text-white hover:bg-slate-700" : ""}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => extendExpiry.mutate()}
+              disabled={extendExpiry.isPending}
+              className="bg-gradient-to-r from-pink-500 to-rose-500 text-white"
+            >
+              {extendExpiry.isPending ? "Extending..." : "Extend"}
             </Button>
           </DialogFooter>
         </DialogContent>
