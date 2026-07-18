@@ -1,3 +1,4 @@
+// src/routes/_authenticated/sales/pos.tsx
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -153,7 +154,12 @@ function POS() {
           <CardContent className="space-y-3">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input className="pl-9" placeholder={t("search")} value={q} onChange={(e) => setQ(e.target.value)} />
+              <Input
+                className="pl-9"
+                placeholder="Search by brand, model, name, or IMEI"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
             </div>
             <div className="max-h-[420px] overflow-y-auto divide-y">
               {filtered.length === 0 && <p className="p-4 text-sm text-muted-foreground text-center">{t("empty")}</p>}
@@ -161,11 +167,21 @@ function POS() {
                 const active = selectedId === i.id;
                 const label = i.item_type === "phone" ? `${i.brand ?? ""} ${i.model ?? ""}`.trim() : i.name;
                 return (
-                  <button key={i.id} onClick={() => { setSelectedId(i.id); setQty(1); }}
-                    className={`w-full text-left p-3 flex items-center justify-between hover:bg-accent transition ${active ? "bg-accent" : ""}`}>
-                    <div>
+                  <button
+                    key={i.id}
+                    onClick={() => { setSelectedId(i.id); setQty(1); }}
+                    className={`w-full text-left p-3 flex items-center gap-3 hover:bg-accent transition ${active ? "bg-accent" : ""}`}
+                  >
+                    {i.photo_url && (
+                      <img src={i.photo_url} alt="" className="w-12 h-12 rounded object-cover flex-shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
                       <p className="font-medium">{label}</p>
-                      <p className="text-xs text-muted-foreground">{i.imei ?? ""} · {t("stock")}: {i.quantity}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        {i.imei && <span className="font-mono">IMEI: {i.imei}</span>}
+                        <span>· Stock: {i.quantity}</span>
+                        {i.condition && <span>· {i.condition}</span>}
+                      </div>
                     </div>
                     <p className="font-semibold">{formatTZS(i.sell_price)}</p>
                   </button>
@@ -180,9 +196,19 @@ function POS() {
           <CardContent className="space-y-3">
             {selected ? (
               <>
-                <div className="rounded-md bg-muted p-3">
-                  <p className="text-sm font-medium">{selected.item_type === "phone" ? `${selected.brand ?? ""} ${selected.model ?? ""}` : selected.name}</p>
-                  <p className="text-xs text-muted-foreground">{formatTZS(unit)}</p>
+                <div className="rounded-md bg-muted p-3 flex items-center gap-3">
+                  {selected.photo_url && (
+                    <img src={selected.photo_url} alt="" className="w-16 h-16 rounded object-cover flex-shrink-0" />
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">
+                      {selected.item_type === "phone" ? `${selected.brand ?? ""} ${selected.model ?? ""}` : selected.name}
+                    </p>
+                    {selected.imei && (
+                      <p className="text-xs font-mono text-muted-foreground">IMEI: {selected.imei}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground">{formatTZS(unit)} · Stock: {selected.quantity}</p>
+                  </div>
                 </div>
                 <div>
                   <Label>{t("quantity")}</Label>
