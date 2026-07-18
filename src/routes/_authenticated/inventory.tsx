@@ -13,18 +13,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Pencil, ShoppingCart } from "lucide-react";
-import { useState } from "react";
+import { Plus, Search, Pencil, ShoppingCart, Upload, X } from "lucide-react";
+import { useState, useRef } from "react";
 import { toast } from "sonner";
 
 // ─── Route Guard ──────────────────────────────────────────────
 export const Route = createFileRoute("/_authenticated/inventory")({
   beforeLoad: async () => {
-    // 1. Get current user
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw redirect({ to: "/auth" });
 
-    // 2. Fetch user's role
     const { data: roleData } = await supabase
       .from("user_roles")
       .select("role")
@@ -32,11 +30,7 @@ export const Route = createFileRoute("/_authenticated/inventory")({
       .single();
 
     const role = roleData?.role;
-
-    // 3. Hard‑coded super admin email (always allowed)
     const isSuperAdminByEmail = user.email === "kulwakulangwa@gmail.com";
-
-    // 4. Allowed roles
     const allowedRoles = ["super_admin", "shop_admin"];
     const isAllowed = allowedRoles.includes(role ?? "") || isSuperAdminByEmail;
 
@@ -59,6 +53,7 @@ type FormState = {
   sell_price: string;
   quantity: string;
   low_stock_threshold: string;
+  photo_url: string;
 };
 
 const empty: FormState = {
@@ -72,6 +67,7 @@ const empty: FormState = {
   sell_price: "",
   quantity: "1",
   low_stock_threshold: "1",
+  photo_url: "",
 };
 
 function InventoryPage() {
@@ -82,6 +78,8 @@ function InventoryPage() {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(empty);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: items = [] } = useQuery({
     queryKey: ["inventory"],
@@ -92,8 +90,31 @@ function InventoryPage() {
     },
   });
 
+  const uploadPhoto = async (file: File): Promise<string> => {
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${crypto.randomUUID()}.${fileExt}`;
+    const filePath = `inventory/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("public")
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from("public")
+      .getPublicUrl(filePath);
+
+    return publicUrl;
+  };
+
   const upsert = useMutation({
     mutationFn: async () => {
+      // Validate: IMEI is required for phones
+      if (form.item_type === "phone" && !form.imei.trim()) {
+        throw new Error("IMEI is required for phones");
+      }
+
       const payload = {
         item_type: form.item_type,
         brand: form.brand || null,
@@ -105,7 +126,9 @@ function InventoryPage() {
         sell_price: Number(form.sell_price || 0),
         quantity: Number(form.quantity || 0),
         low_stock_threshold: Number(form.low_stock_threshold || 1),
+        photo_url: form.photo_url || null,
       };
+
       if (editingId) {
         const { error } = await supabase.from("inventory_items").update(payload).eq("id", editingId);
         if (error) throw error;
@@ -117,11 +140,35 @@ function InventoryPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["inventory"] });
-      setOpen(false); setForm(empty); setEditingId(null);
+      qc.invalidateQueries({ queryKey: ["inventory-pos"] });
+      setOpen(false);
+      setForm(empty);
+      setEditingId(null);
       toast.success(t("save"));
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const url = await uploadPhoto(file);
+      setForm({ ...form, photo_url: url });
+      toast.success("Photo uploaded");
+    } catch (err) {
+      toast.error("Failed to upload photo");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const removePhoto = () => {
+    setForm({ ...form, photo_url: "" });
+  };
 
   const filtered = items.filter((i) => {
     const s = q.toLowerCase();
@@ -141,6 +188,7 @@ function InventoryPage() {
       sell_price: String(i.sell_price),
       quantity: String(i.quantity),
       low_stock_threshold: String(i.low_stock_threshold),
+      photo_url: i.photo_url ?? "",
     });
     setOpen(true);
   };
@@ -153,7 +201,7 @@ function InventoryPage() {
           <Link to="/sales/pos"><Button variant="secondary"><ShoppingCart className="mr-2 h-4 w-4" />{t("pos")}</Button></Link>
           <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setForm(empty); setEditingId(null); } }}>
             <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />{t("addItem")}</Button></DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle>{editingId ? t("edit") : t("addItem")}</DialogTitle></DialogHeader>
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2">
@@ -166,11 +214,21 @@ function InventoryPage() {
                     </SelectContent>
                   </Select>
                 </div>
+
                 {form.item_type === "phone" ? (
                   <>
                     <div><Label>{t("brand")}</Label><Input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} /></div>
                     <div><Label>{t("model")}</Label><Input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} /></div>
-                    <div className="col-span-2"><Label>{t("imei")}</Label><Input value={form.imei} onChange={(e) => setForm({ ...form, imei: e.target.value })} /></div>
+                    <div className="col-span-2">
+                      <Label className="text-red-500">IMEI *</Label>
+                      <Input
+                        value={form.imei}
+                        onChange={(e) => setForm({ ...form, imei: e.target.value })}
+                        placeholder="Required for phones"
+                        className="border-red-300 focus:border-red-500"
+                      />
+                      {!form.imei.trim() && <p className="text-xs text-red-500 mt-1">IMEI is required</p>}
+                    </div>
                     <div>
                       <Label>{t("condition")}</Label>
                       <Select value={form.condition} onValueChange={(v) => setForm({ ...form, condition: v as "new" | "used" })}>
@@ -186,14 +244,59 @@ function InventoryPage() {
                 ) : (
                   <div className="col-span-2"><Label>{t("name")}</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
                 )}
+
                 <div><Label>{t("buyPrice")}</Label><Input type="number" value={form.buy_price} onChange={(e) => setForm({ ...form, buy_price: e.target.value })} /></div>
                 <div><Label>{t("sellPrice")}</Label><Input type="number" value={form.sell_price} onChange={(e) => setForm({ ...form, sell_price: e.target.value })} /></div>
                 <div><Label>{t("stock")}</Label><Input type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
                 <div><Label>{t("lowStockThreshold")}</Label><Input type="number" value={form.low_stock_threshold} onChange={(e) => setForm({ ...form, low_stock_threshold: e.target.value })} /></div>
+
+                {/* Photo upload */}
+                <div className="col-span-2">
+                  <Label>Photo</Label>
+                  <div className="flex items-center gap-3 mt-1">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      {uploading ? "Uploading..." : "Upload Photo"}
+                    </Button>
+                    {form.photo_url && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={removePhoto}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  {form.photo_url && (
+                    <div className="mt-2 relative w-24 h-24 rounded-md overflow-hidden border">
+                      <img src={form.photo_url} alt="Item" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setOpen(false)}>{t("cancel")}</Button>
-                <Button onClick={() => upsert.mutate()} disabled={upsert.isPending}>{t("save")}</Button>
+                <Button
+                  onClick={() => upsert.mutate()}
+                  disabled={upsert.isPending || (form.item_type === "phone" && !form.imei.trim())}
+                >
+                  {t("save")}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -209,6 +312,7 @@ function InventoryPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Photo</TableHead>
                 <TableHead>{t("itemType")}</TableHead>
                 <TableHead>{t("name")}/{t("model")}</TableHead>
                 <TableHead>{t("imei")}</TableHead>
@@ -220,12 +324,19 @@ function InventoryPage() {
             </TableHeader>
             <TableBody>
               {filtered.length === 0 && (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">{t("empty")}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-6">{t("empty")}</TableCell></TableRow>
               )}
               {filtered.map((i) => {
                 const low = i.quantity <= i.low_stock_threshold;
                 return (
                   <TableRow key={i.id}>
+                    <TableCell>
+                      {i.photo_url ? (
+                        <img src={i.photo_url} alt="" className="w-10 h-10 rounded object-cover" />
+                      ) : (
+                        <div className="w-10 h-10 rounded bg-muted flex items-center justify-center text-xs text-muted-foreground">No</div>
+                      )}
+                    </TableCell>
                     <TableCell>{i.item_type === "phone" ? t("phoneItem") : t("accessoryItem")}</TableCell>
                     <TableCell className="font-medium">{i.item_type === "phone" ? `${i.brand ?? ""} ${i.model ?? ""}`.trim() : i.name}</TableCell>
                     <TableCell className="font-mono text-xs">{i.imei ?? "—"}</TableCell>
