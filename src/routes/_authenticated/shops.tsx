@@ -11,10 +11,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Pause, Play, Trash2, UserPlus } from "lucide-react";
+import { Plus, Pause, Play, Trash2, UserPlus, KeyRound } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { createShop, updateShop, deleteShop, createShopAdmin } from "@/lib/admin.functions";
+import { createShop, updateShop, deleteShop, createShopAdmin, resetShopAdminPassword } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/_authenticated/shops")({ component: ShopsPage });
 
@@ -22,56 +22,62 @@ function ShopsPage() {
   const { t } = useI18n();
   const qc = useQueryClient();
 
-  // 1. Get role from hook (may fail if RLS is strict)
+  // Role detection
   const { data: myRole } = useMyRole();
-
-  // 2. Get current user directly from Supabase (to check email)
-  const { data: user, isLoading: userLoading } = useQuery({
+  const { data: user } = useQuery({
     queryKey: ["authUser"],
     queryFn: async () => {
       const { data, error } = await supabase.auth.getUser();
       if (error) throw error;
       return data.user;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 
-  // 3. Determine if super admin – role OR hardcoded email
   const isSuper = myRole?.isSuperAdmin || user?.email === "kulwakulangwa@gmail.com";
 
-  // 4. Fetch shops – only if super admin is confirmed
+  // Fetch shops
   const { data: shops = [], isLoading: shopsLoading } = useQuery({
     queryKey: ["shops"],
-    enabled: !!isSuper, // only run when we know user is super
+    enabled: !!isSuper,
     queryFn: async () => {
-      console.log("[Shops] Fetching all shops as super admin");
-      const { data, error } = await supabase
-        .from("shops")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) {
-        console.error("[Shops] Error:", error);
-        toast.error(t("errorFetchingShops"));
-        return [];
-      }
-      console.log(`[Shops] Fetched ${data?.length || 0} shops`);
+      const { data, error } = await supabase.from("shops").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
       return data ?? [];
     },
   });
 
-  // Mutations for CRUD operations
+  // Fetch shop admins
+  const { data: shopAdmins = [] } = useQuery({
+    queryKey: ["shop-admins"],
+    enabled: !!isSuper,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("*, profiles(id, full_name, email)")
+        .eq("role", "shop_admin");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Mutations
   const createShopFn = useServerFn(createShop);
   const updateShopFn = useServerFn(updateShop);
   const deleteShopFn = useServerFn(deleteShop);
   const createAdminFn = useServerFn(createShopAdmin);
+  const resetPasswordFn = useServerFn(resetShopAdminPassword);
 
-  // Local state for forms
   const [openShop, setOpenShop] = useState(false);
   const [shopForm, setShopForm] = useState({ name: "", phone: "", address: "", region: "" });
   const [adminOpen, setAdminOpen] = useState<string | null>(null);
   const [adminForm, setAdminForm] = useState({ email: "", password: "", full_name: "", phone: "" });
 
-  // Mutations
+  // Reset password state
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetUserId, setResetUserId] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+
   const add = useMutation({
     mutationFn: async () => createShopFn({ data: shopForm }),
     onSuccess: () => {
@@ -105,19 +111,27 @@ function ShopsPage() {
       setAdminOpen(null);
       setAdminForm({ email: "", password: "", full_name: "", phone: "" });
       toast.success(t("save"));
+      qc.invalidateQueries({ queryKey: ["shop-admins"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  // Loading state
-  if (userLoading || shopsLoading) {
-    return <div className="text-muted-foreground">Loading...</div>;
-  }
+  const resetPassword = useMutation({
+    mutationFn: async () => {
+      if (!resetUserId) throw new Error("No user selected");
+      if (!newPassword || newPassword.length < 6) throw new Error("Password must be at least 6 characters");
+      await resetPasswordFn({ data: { user_id: resetUserId, new_password: newPassword } });
+    },
+    onSuccess: () => {
+      toast.success("Password reset successfully");
+      setResetOpen(false);
+      setNewPassword("");
+      setResetUserId(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
-  // Forbidden for non‑super
-  if (!isSuper) {
-    return <div className="text-muted-foreground">Forbidden</div>;
-  }
+  if (!isSuper) return <div className="text-muted-foreground">Forbidden</div>;
 
   return (
     <div className="space-y-4">
@@ -184,102 +198,154 @@ function ShopsPage() {
               <TableHead>{t("phone")}</TableHead>
               <TableHead>{t("region")}</TableHead>
               <TableHead>{t("status")}</TableHead>
+              <TableHead>Shop Admin</TableHead>
               <TableHead className="text-right">{t("actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {shops.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
                   {t("empty")}
                 </TableCell>
               </TableRow>
             )}
-            {shops.map((s) => (
-              <TableRow key={s.id}>
-                <TableCell className="font-medium">{s.name}</TableCell>
-                <TableCell>{s.phone ?? "—"}</TableCell>
-                <TableCell>{s.region ?? "—"}</TableCell>
-                <TableCell>
-                  <Badge variant={s.status === "active" ? "default" : "secondary"}>
-                    {t(s.status === "active" ? "active" : "suspendedShops")}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right space-x-1">
-                  <Dialog
-                    open={adminOpen === s.id}
-                    onOpenChange={(v) => setAdminOpen(v ? s.id : null)}
-                  >
-                    <DialogTrigger asChild>
-                      <Button size="sm" variant="outline">
-                        <UserPlus className="h-4 w-4 mr-1" />
-                        {t("createShopAdmin")}
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>{t("createShopAdmin")} — {s.name}</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-3">
-                        <div>
-                          <Label>{t("fullName")}</Label>
-                          <Input
-                            value={adminForm.full_name}
-                            onChange={(e) => setAdminForm({ ...adminForm, full_name: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <Label>{t("phone")}</Label>
-                          <Input
-                            value={adminForm.phone}
-                            onChange={(e) => setAdminForm({ ...adminForm, phone: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <Label>{t("email")}</Label>
-                          <Input
-                            type="email"
-                            value={adminForm.email}
-                            onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <Label>{t("password")}</Label>
-                          <Input
-                            type="password"
-                            value={adminForm.password}
-                            onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })}
-                          />
-                        </div>
+            {shops.map((s) => {
+              const admin = shopAdmins.find((a) => a.shop_id === s.id);
+              return (
+                <TableRow key={s.id}>
+                  <TableCell className="font-medium">{s.name}</TableCell>
+                  <TableCell>{s.phone ?? "—"}</TableCell>
+                  <TableCell>{s.region ?? "—"}</TableCell>
+                  <TableCell>
+                    <Badge variant={s.status === "active" ? "default" : "secondary"}>
+                      {t(s.status === "active" ? "active" : "suspendedShops")}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {admin ? (
+                      <div className="flex items-center gap-2">
+                        <span>{admin.profiles?.full_name || admin.profiles?.email || "Admin"}</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setResetUserId(admin.user_id);
+                            setResetOpen(true);
+                          }}
+                          className="h-7 px-2 text-xs"
+                        >
+                          <KeyRound className="h-3 w-3 mr-1" />
+                          Reset
+                        </Button>
                       </div>
-                      <DialogFooter>
-                        <Button variant="ghost" onClick={() => setAdminOpen(null)}>
-                          {t("cancel")}
+                    ) : (
+                      <span className="text-muted-foreground text-sm">No admin</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right space-x-1">
+                    <Dialog
+                      open={adminOpen === s.id}
+                      onOpenChange={(v) => setAdminOpen(v ? s.id : null)}
+                    >
+                      <DialogTrigger asChild>
+                        <Button size="sm" variant="outline">
+                          <UserPlus className="h-4 w-4 mr-1" />
+                          {t("createShopAdmin")}
                         </Button>
-                        <Button onClick={() => addAdmin.mutate(s.id)} disabled={addAdmin.isPending}>
-                          {t("save")}
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                  <Button size="sm" variant="ghost" onClick={() => toggle.mutate({ id: s.id, status: s.status })}>
-                    {s.status === "active" ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      if (confirm(t("confirmDelete"))) remove.mutate(s.id);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>{t("createShopAdmin")} — {s.name}</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-3">
+                          <div>
+                            <Label>{t("fullName")}</Label>
+                            <Input
+                              value={adminForm.full_name}
+                              onChange={(e) => setAdminForm({ ...adminForm, full_name: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <Label>{t("phone")}</Label>
+                            <Input
+                              value={adminForm.phone}
+                              onChange={(e) => setAdminForm({ ...adminForm, phone: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <Label>{t("email")}</Label>
+                            <Input
+                              type="email"
+                              value={adminForm.email}
+                              onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <Label>{t("password")}</Label>
+                            <Input
+                              type="password"
+                              value={adminForm.password}
+                              onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button variant="ghost" onClick={() => setAdminOpen(null)}>
+                            {t("cancel")}
+                          </Button>
+                          <Button onClick={() => addAdmin.mutate(s.id)} disabled={addAdmin.isPending}>
+                            {t("save")}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                    <Button size="sm" variant="ghost" onClick={() => toggle.mutate({ id: s.id, status: s.status })}>
+                      {s.status === "active" ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        if (confirm(t("confirmDelete"))) remove.mutate(s.id);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </Card>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={resetOpen} onOpenChange={(v) => setResetOpen(v)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset Shop Admin Password</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label>New Password</Label>
+            <Input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Enter new password (min 6 characters)"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setResetOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => resetPassword.mutate()}
+              disabled={resetPassword.isPending}
+            >
+              {resetPassword.isPending ? "Resetting..." : "Reset Password"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
