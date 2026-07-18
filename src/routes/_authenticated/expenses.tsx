@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
-import { useShopId } from "@/hooks/use-role";
+import { useShopId, useMyRole } from "@/hooks/use-role";
 import { formatTZS, formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -24,6 +24,9 @@ function ExpensesPage() {
   const { t } = useI18n();
   const qc = useQueryClient();
   const shopId = useShopId();
+  const { data: myRole } = useMyRole();
+  const isSuperAdmin = myRole?.isSuperAdmin || false; // only super_admin can delete
+
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<{ category: Cat; amount: string; note: string; expense_date: string }>({
     category: "rent", amount: "", note: "", expense_date: new Date().toISOString().slice(0, 10),
@@ -49,7 +52,22 @@ function ExpensesPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Delete mutation – only allowed for super_admin
+  const del = useMutation({
+    mutationFn: async (id: string) => {
+      if (!isSuperAdmin) throw new Error("Only super admin can delete expenses");
+      const { error } = await supabase.from("expenses").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["expenses"] }); toast.success(t("deleteSuccess")); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const catLabel = (c: Cat) => c === "rent" ? t("rent") : c === "electricity" ? t("electricity") : c === "salaries" ? t("salaries") : t("other");
+
+  const handleDelete = (id: string) => {
+    if (confirm(t("confirmDelete"))) del.mutate(id);
+  };
 
   return (
     <div className="space-y-4">
@@ -87,15 +105,23 @@ function ExpensesPage() {
         <Table>
           <TableHeader><TableRow>
             <TableHead>{t("date")}</TableHead><TableHead>{t("category")}</TableHead><TableHead className="text-right">{t("amount")}</TableHead><TableHead>{t("note")}</TableHead>
+            {isSuperAdmin && <TableHead className="text-right">{t("actions")}</TableHead>}
           </TableRow></TableHeader>
           <TableBody>
-            {rows.length === 0 && <TableRow><TableCell colSpan={4} className="text-center py-6 text-muted-foreground">{t("empty")}</TableCell></TableRow>}
+            {rows.length === 0 && <TableRow><TableCell colSpan={isSuperAdmin ? 5 : 4} className="text-center py-6 text-muted-foreground">{t("empty")}</TableCell></TableRow>}
             {rows.map((r) => (
               <TableRow key={r.id}>
                 <TableCell className="text-xs">{formatDate(r.expense_date)}</TableCell>
                 <TableCell>{catLabel(r.category as Cat)}</TableCell>
                 <TableCell className="text-right font-semibold">{formatTZS(r.amount)}</TableCell>
                 <TableCell className="text-muted-foreground">{r.note ?? "—"}</TableCell>
+                {isSuperAdmin && (
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(r.id)} disabled={del.isPending}>
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
