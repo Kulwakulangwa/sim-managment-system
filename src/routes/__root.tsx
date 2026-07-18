@@ -16,6 +16,7 @@ import { I18nProvider } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { installGlobalErrorHandlers, logError } from "@/lib/error-logger";
+import { ThemeProvider } from "@/lib/theme"; // <-- Import ThemeProvider
 
 function NotFoundComponent() {
   return (
@@ -101,12 +102,14 @@ function RootComponent() {
   }, [queryClient, router]);
   return (
     <QueryClientProvider client={queryClient}>
-      <I18nProvider>
-        <ErrorBoundary>
-          <Outlet />
-        </ErrorBoundary>
-        <Toaster richColors position="top-right" />
-      </I18nProvider>
+      <ThemeProvider> {/* <-- Wraps everything with ThemeProvider */}
+        <I18nProvider>
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
+          <Toaster richColors position="top-right" />
+        </I18nProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
