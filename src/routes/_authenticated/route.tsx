@@ -22,7 +22,7 @@ import {
   BookOpen,
   ShieldAlert,
 } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -43,7 +43,21 @@ function Layout() {
   const { t, lang, setLang } = useI18n();
   const { data: myRole } = useMyRole();
   const role = myRole?.role ?? null;
-  const isSuper = myRole?.isSuperAdmin ?? false;
+  const isSuperFromHook = myRole?.isSuperAdmin ?? false;
+
+  // Hard‑coded super admin fallback (by email)
+  const { data: user } = useQuery({
+    queryKey: ["authUser"],
+    queryFn: async () => {
+      const { data } = await supabase.auth.getUser();
+      return data.user;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const isSuperAdminByEmail = user?.email === "kulwakulangwa@gmail.com";
+  const isSuper = isSuperFromHook || isSuperAdminByEmail;
+
   const navigate = useNavigate();
   const router = useRouter();
   const qc = useQueryClient();
@@ -61,7 +75,8 @@ function Layout() {
     : [
         { to: "/dashboard", label: "dashboard", icon: LayoutDashboard },
         { to: "/sales", label: "sales", icon: ShoppingCart },
-        { to: "/inventory", label: "inventory", icon: Boxes, roles: ["shop_admin", "cashier", "salesperson"] },
+        // 🔒 Only shop_admin can see Inventory
+        { to: "/inventory", label: "inventory", icon: Boxes, roles: ["shop_admin"] },
         { to: "/customers", label: "customers", icon: Users },
         { to: "/repairs", label: "repairs", icon: Wrench, roles: ["shop_admin", "technician"] },
         { to: "/warranties", label: "warranties", icon: ShieldCheck },
@@ -104,7 +119,6 @@ function Layout() {
             )}
           >
             <Icon className="h-4 w-4" />
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             {t(it.label as any)}
           </Link>
         );
