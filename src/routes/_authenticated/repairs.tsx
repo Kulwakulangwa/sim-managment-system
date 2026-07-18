@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus } from "lucide-react";
+import { Plus, Wrench, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -36,6 +36,12 @@ function RepairsPage() {
     queryKey: ["customers"],
     queryFn: async () => (await supabase.from("customers").select("*").order("full_name")).data ?? [],
   });
+
+  // Calculate stats
+  const total = rows.length;
+  const pending = rows.filter((r) => r.status === "received" || r.status === "in_progress").length;
+  const completed = rows.filter((r) => r.status === "completed").length;
+  const inProgress = rows.filter((r) => r.status === "in_progress").length;
 
   const add = useMutation({
     mutationFn: async () => {
@@ -68,68 +74,125 @@ function RepairsPage() {
   const statusLabel = (s: Status) => s === "received" ? t("received") : s === "in_progress" ? t("inProgress") : t("completed");
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{t("repairs")}</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />{t("add")}</Button></DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>{t("repairs")}</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <div>
-                <Label>{t("customer")}</Label>
-                <Select value={form.customer_id} onValueChange={(v) => setForm({ ...form, customer_id: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">—</SelectItem>
-                    {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name} · {c.phone}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div><Label>{t("device")}</Label><Input value={form.device_description} onChange={(e) => setForm({ ...form, device_description: e.target.value })} /></div>
-              <div><Label>{t("issue")}</Label><Textarea value={form.issue_description} onChange={(e) => setForm({ ...form, issue_description: e.target.value })} /></div>
-              <div><Label>{t("repairCost")}</Label><Input type="number" value={form.repair_cost} onChange={(e) => setForm({ ...form, repair_cost: e.target.value })} /></div>
+    <div className="space-y-6">
+      {/* Header with gradient */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white shadow-xl">
+        <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-blue-500/20 blur-3xl" />
+        <div className="absolute bottom-0 left-20 h-24 w-24 rounded-full bg-emerald-500/20 blur-2xl" />
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">{t("repairs")}</h1>
+            <p className="mt-1 text-sm text-white/70">Track and manage repair jobs</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 backdrop-blur-sm">
+              <Wrench className="h-4 w-4 text-white/60" />
+              <span className="text-sm">{total} repairs</span>
             </div>
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setOpen(false)}>{t("cancel")}</Button>
-              <Button onClick={() => add.mutate()} disabled={add.isPending}>{t("save")}</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            {pending > 0 && (
+              <div className="flex items-center gap-2 rounded-full bg-amber-500/20 px-3 py-1 backdrop-blur-sm">
+                <Clock className="h-4 w-4 text-amber-400" />
+                <span className="text-sm">{pending} pending</span>
+              </div>
+            )}
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-to-r from-[#C45BA0] to-[#8B3A8F] text-white hover:shadow-lg hover:shadow-[#C45BA0]/30 transition-all">
+                  <Plus className="mr-2 h-4 w-4" /> {t("add")}
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>{t("repairs")}</DialogTitle></DialogHeader>
+                <div className="space-y-3">
+                  <div>
+                    <Label>{t("customer")}</Label>
+                    <Select value={form.customer_id} onValueChange={(v) => setForm({ ...form, customer_id: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">—</SelectItem>
+                        {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name} · {c.phone}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div><Label>{t("device")}</Label><Input value={form.device_description} onChange={(e) => setForm({ ...form, device_description: e.target.value })} /></div>
+                  <div><Label>{t("issue")}</Label><Textarea value={form.issue_description} onChange={(e) => setForm({ ...form, issue_description: e.target.value })} /></div>
+                  <div><Label>{t("repairCost")}</Label><Input type="number" value={form.repair_cost} onChange={(e) => setForm({ ...form, repair_cost: e.target.value })} /></div>
+                </div>
+                <DialogFooter>
+                  <Button variant="ghost" onClick={() => setOpen(false)}>{t("cancel")}</Button>
+                  <Button onClick={() => add.mutate()} disabled={add.isPending}>{t("save")}</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+        {/* Quick stats row */}
+        <div className="relative z-10 mt-4 flex flex-wrap gap-4 text-sm">
+          <div className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 backdrop-blur-sm">
+            <AlertCircle className="h-4 w-4 text-amber-400" />
+            <span>Received: {rows.filter((r) => r.status === "received").length}</span>
+          </div>
+          <div className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 backdrop-blur-sm">
+            <Clock className="h-4 w-4 text-blue-400" />
+            <span>In progress: {inProgress}</span>
+          </div>
+          <div className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 backdrop-blur-sm">
+            <CheckCircle className="h-4 w-4 text-emerald-400" />
+            <span>Completed: {completed}</span>
+          </div>
+        </div>
       </div>
-      <Card className="p-4 overflow-x-auto">
-        <Table>
-          <TableHeader><TableRow>
-            <TableHead>{t("date")}</TableHead>
-            <TableHead>{t("customer")}</TableHead>
-            <TableHead>{t("device")}</TableHead>
-            <TableHead>{t("issue")}</TableHead>
-            <TableHead className="text-right">{t("repairCost")}</TableHead>
-            <TableHead>{t("status")}</TableHead>
-          </TableRow></TableHeader>
-          <TableBody>
-            {rows.length === 0 && <TableRow><TableCell colSpan={6} className="text-center py-6 text-muted-foreground">{t("empty")}</TableCell></TableRow>}
-            {rows.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell className="text-xs">{formatDate(r.received_date)}</TableCell>
-                <TableCell>{r.customers?.full_name ?? "—"}</TableCell>
-                <TableCell className="font-medium">{r.device_description}</TableCell>
-                <TableCell className="max-w-xs truncate">{r.issue_description ?? "—"}</TableCell>
-                <TableCell className="text-right">{formatTZS(r.repair_cost)}</TableCell>
-                <TableCell>
-                  <Select value={r.status} onValueChange={(v) => update.mutate({ id: r.id, status: v as Status })}>
-                    <SelectTrigger className="w-40"><SelectValue><Badge variant={r.status === "completed" ? "secondary" : "outline"}>{statusLabel(r.status as Status)}</Badge></SelectValue></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="received">{t("received")}</SelectItem>
-                      <SelectItem value="in_progress">{t("inProgress")}</SelectItem>
-                      <SelectItem value="completed">{t("completed")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </TableCell>
+
+      {/* Table card */}
+      <Card className="border-0 bg-white/80 shadow-sm backdrop-blur-sm dark:bg-slate-900/80 p-4">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("date")}</TableHead>
+                <TableHead>{t("customer")}</TableHead>
+                <TableHead>{t("device")}</TableHead>
+                <TableHead>{t("issue")}</TableHead>
+                <TableHead className="text-right">{t("repairCost")}</TableHead>
+                <TableHead>{t("status")}</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {rows.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                    {t("empty")}
+                  </TableCell>
+                </TableRow>
+              )}
+              {rows.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="text-xs">{formatDate(r.received_date)}</TableCell>
+                  <TableCell>{r.customers?.full_name ?? "—"}</TableCell>
+                  <TableCell className="font-medium">{r.device_description}</TableCell>
+                  <TableCell className="max-w-xs truncate">{r.issue_description ?? "—"}</TableCell>
+                  <TableCell className="text-right">{formatTZS(r.repair_cost)}</TableCell>
+                  <TableCell>
+                    <Select value={r.status} onValueChange={(v) => update.mutate({ id: r.id, status: v as Status })}>
+                      <SelectTrigger className="w-40">
+                        <SelectValue>
+                          <Badge variant={r.status === "completed" ? "secondary" : "outline"}>
+                            {statusLabel(r.status as Status)}
+                          </Badge>
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="received">{t("received")}</SelectItem>
+                        <SelectItem value="in_progress">{t("inProgress")}</SelectItem>
+                        <SelectItem value="completed">{t("completed")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
     </div>
   );
