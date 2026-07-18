@@ -1,4 +1,3 @@
-// src/routes/_authenticated/inventory.tsx
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Pencil, ShoppingCart, Upload, X } from "lucide-react";
+import { Plus, Search, Pencil, ShoppingCart, Upload, X, Package, AlertTriangle } from "lucide-react";
 import { useState, useRef } from "react";
 import { toast } from "sonner";
 
@@ -88,6 +87,10 @@ function InventoryPage() {
     },
   });
 
+  // Compute some stats for the header
+  const totalItems = items.length;
+  const lowStockItems = items.filter((i) => i.quantity <= i.low_stock_threshold).length;
+
   const uploadPhoto = async (file: File): Promise<string> => {
     const fileExt = file.name.split(".").pop();
     const fileName = `${crypto.randomUUID()}.${fileExt}`;
@@ -122,7 +125,6 @@ function InventoryPage() {
         quantity: Number(form.quantity || 0),
         low_stock_threshold: Number(form.low_stock_threshold || 1),
         photo_url: form.photo_url || null,
-        // IMEI is no longer stored in inventory
       };
 
       if (editingId) {
@@ -189,106 +191,138 @@ function InventoryPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">{t("inventory")}</h1>
-        <div className="flex gap-2">
-          <Link to="/sales/pos"><Button variant="secondary"><ShoppingCart className="mr-2 h-4 w-4" />{t("pos")}</Button></Link>
-          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setForm(empty); setEditingId(null); } }}>
-            <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />{t("addItem")}</Button></DialogTrigger>
-            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-              <DialogHeader><DialogTitle>{editingId ? t("edit") : t("addItem")}</DialogTitle></DialogHeader>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2">
-                  <Label>{t("itemType")}</Label>
-                  <Select value={form.item_type} onValueChange={(v) => setForm({ ...form, item_type: v as "phone" | "accessory" })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="phone">{t("phoneItem")}</SelectItem>
-                      <SelectItem value="accessory">{t("accessoryItem")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+    <div className="space-y-6">
+      {/* Header with gradient */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white shadow-xl">
+        <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-blue-500/20 blur-3xl" />
+        <div className="absolute bottom-0 left-20 h-24 w-24 rounded-full bg-emerald-500/20 blur-2xl" />
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">{t("inventory")}</h1>
+            <p className="mt-1 text-sm text-white/70">Manage your stock and products</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 backdrop-blur-sm">
+              <Package className="h-4 w-4 text-white/60" />
+              <span className="text-sm">{totalItems} items</span>
+            </div>
+            {lowStockItems > 0 && (
+              <div className="flex items-center gap-2 rounded-full bg-amber-500/20 px-3 py-1 backdrop-blur-sm">
+                <AlertTriangle className="h-4 w-4 text-amber-400" />
+                <span className="text-sm">{lowStockItems} low stock</span>
+              </div>
+            )}
+            <Link to="/sales/pos">
+              <Button variant="secondary" className="bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm border-0">
+                <ShoppingCart className="mr-2 h-4 w-4" /> {t("pos")}
+              </Button>
+            </Link>
+            <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setForm(empty); setEditingId(null); } }}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-to-r from-[#C45BA0] to-[#8B3A8F] text-white hover:shadow-lg hover:shadow-[#C45BA0]/30 transition-all">
+                  <Plus className="mr-2 h-4 w-4" /> {t("addItem")}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                <DialogHeader><DialogTitle>{editingId ? t("edit") : t("addItem")}</DialogTitle></DialogHeader>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2">
+                    <Label>{t("itemType")}</Label>
+                    <Select value={form.item_type} onValueChange={(v) => setForm({ ...form, item_type: v as "phone" | "accessory" })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="phone">{t("phoneItem")}</SelectItem>
+                        <SelectItem value="accessory">{t("accessoryItem")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                {form.item_type === "phone" ? (
-                  <>
-                    <div><Label>{t("brand")}</Label><Input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} /></div>
-                    <div><Label>{t("model")}</Label><Input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} /></div>
-                    <div>
-                      <Label>{t("condition")}</Label>
-                      <Select value={form.condition} onValueChange={(v) => setForm({ ...form, condition: v as "new" | "used" })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="new">{t("new")}</SelectItem>
-                          <SelectItem value="used">{t("used")}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div />
-                  </>
-                ) : (
-                  <div className="col-span-2"><Label>{t("name")}</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-                )}
+                  {form.item_type === "phone" ? (
+                    <>
+                      <div><Label>{t("brand")}</Label><Input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} /></div>
+                      <div><Label>{t("model")}</Label><Input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} /></div>
+                      <div>
+                        <Label>{t("condition")}</Label>
+                        <Select value={form.condition} onValueChange={(v) => setForm({ ...form, condition: v as "new" | "used" })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="new">{t("new")}</SelectItem>
+                            <SelectItem value="used">{t("used")}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div />
+                    </>
+                  ) : (
+                    <div className="col-span-2"><Label>{t("name")}</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+                  )}
 
-                <div><Label>{t("buyPrice")}</Label><Input type="number" value={form.buy_price} onChange={(e) => setForm({ ...form, buy_price: e.target.value })} /></div>
-                <div><Label>{t("sellPrice")}</Label><Input type="number" value={form.sell_price} onChange={(e) => setForm({ ...form, sell_price: e.target.value })} /></div>
-                <div><Label>{t("stock")}</Label><Input type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
-                <div><Label>{t("lowStockThreshold")}</Label><Input type="number" value={form.low_stock_threshold} onChange={(e) => setForm({ ...form, low_stock_threshold: e.target.value })} /></div>
+                  <div><Label>{t("buyPrice")}</Label><Input type="number" value={form.buy_price} onChange={(e) => setForm({ ...form, buy_price: e.target.value })} /></div>
+                  <div><Label>{t("sellPrice")}</Label><Input type="number" value={form.sell_price} onChange={(e) => setForm({ ...form, sell_price: e.target.value })} /></div>
+                  <div><Label>{t("stock")}</Label><Input type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
+                  <div><Label>{t("lowStockThreshold")}</Label><Input type="number" value={form.low_stock_threshold} onChange={(e) => setForm({ ...form, low_stock_threshold: e.target.value })} /></div>
 
-                {/* Photo upload */}
-                <div className="col-span-2">
-                  <Label>Photo</Label>
-                  <div className="flex items-center gap-3 mt-1">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploading}
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      {uploading ? "Uploading..." : "Upload Photo"}
-                    </Button>
-                    {form.photo_url && (
+                  {/* Photo upload */}
+                  <div className="col-span-2">
+                    <Label>Photo</Label>
+                    <div className="flex items-center gap-3 mt-1">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="hidden"
+                      />
                       <Button
                         type="button"
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        onClick={removePhoto}
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
                       >
-                        <X className="h-4 w-4" />
+                        <Upload className="h-4 w-4 mr-2" />
+                        {uploading ? "Uploading..." : "Upload Photo"}
                       </Button>
+                      {form.photo_url && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={removePhoto}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    {form.photo_url && (
+                      <div className="mt-2 relative w-24 h-24 rounded-md overflow-hidden border">
+                        <img src={form.photo_url} alt="Item" className="w-full h-full object-cover" />
+                      </div>
                     )}
                   </div>
-                  {form.photo_url && (
-                    <div className="mt-2 relative w-24 h-24 rounded-md overflow-hidden border">
-                      <img src={form.photo_url} alt="Item" className="w-full h-full object-cover" />
-                    </div>
-                  )}
                 </div>
-              </div>
-              <DialogFooter>
-                <Button variant="ghost" onClick={() => setOpen(false)}>{t("cancel")}</Button>
-                <Button onClick={() => upsert.mutate()} disabled={upsert.isPending}>
-                  {t("save")}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                <DialogFooter>
+                  <Button variant="ghost" onClick={() => setOpen(false)}>{t("cancel")}</Button>
+                  <Button onClick={() => upsert.mutate()} disabled={upsert.isPending}>
+                    {t("save")}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
       </div>
 
-      <Card className="p-4">
-        <div className="relative mb-3">
+      {/* Search and table */}
+      <Card className="border-0 bg-white/80 shadow-sm backdrop-blur-sm dark:bg-slate-900/80 p-4">
+        <div className="relative mb-4">
           <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input className="pl-9" placeholder={t("search")} value={q} onChange={(e) => setQ(e.target.value)} />
+          <Input
+            className="pl-9 bg-white dark:bg-slate-800"
+            placeholder={t("search")}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
         </div>
         <div className="overflow-x-auto">
           <Table>
