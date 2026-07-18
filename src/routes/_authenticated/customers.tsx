@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Users } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -35,7 +35,6 @@ function CustomersPage() {
       const { error } = await supabase.from("customers").insert({ ...form, shop_id: shopId });
       if (error) throw error;
     },
-
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["customers"] }); setOpen(false); setForm({ full_name: "", phone: "" }); toast.success(t("save")); },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -43,36 +42,79 @@ function CustomersPage() {
   const filtered = rows.filter((r) => !q || `${r.full_name} ${r.phone}`.toLowerCase().includes(q.toLowerCase()));
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{t("customers")}</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />{t("add")}</Button></DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>{t("customer")}</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <div><Label>{t("fullName")}</Label><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
-              <div><Label>{t("phone")}</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
+    <div className="space-y-6">
+      {/* Header with gradient */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white shadow-xl">
+        <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-blue-500/20 blur-3xl" />
+        <div className="absolute bottom-0 left-20 h-24 w-24 rounded-full bg-emerald-500/20 blur-2xl" />
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">{t("customers")}</h1>
+            <p className="mt-1 text-sm text-white/70">Manage your customer database</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 backdrop-blur-sm">
+              <Users className="h-4 w-4 text-white/60" />
+              <span className="text-sm">{rows.length} customers</span>
             </div>
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setOpen(false)}>{t("cancel")}</Button>
-              <Button onClick={() => add.mutate()} disabled={add.isPending}>{t("save")}</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-      <Card className="p-4">
-        <div className="relative mb-3">
-          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input className="pl-9" placeholder={t("search")} value={q} onChange={(e) => setQ(e.target.value)} />
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-to-r from-[#C45BA0] to-[#8B3A8F] text-white hover:shadow-lg hover:shadow-[#C45BA0]/30 transition-all">
+                  <Plus className="mr-2 h-4 w-4" /> {t("add")}
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>{t("customer")}</DialogTitle></DialogHeader>
+                <div className="space-y-3">
+                  <div><Label>{t("fullName")}</Label><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
+                  <div><Label>{t("phone")}</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
+                </div>
+                <DialogFooter>
+                  <Button variant="ghost" onClick={() => setOpen(false)}>{t("cancel")}</Button>
+                  <Button onClick={() => add.mutate()} disabled={add.isPending}>{t("save")}</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
-        <Table>
-          <TableHeader><TableRow><TableHead>{t("fullName")}</TableHead><TableHead>{t("phone")}</TableHead></TableRow></TableHeader>
-          <TableBody>
-            {filtered.length === 0 && <TableRow><TableCell colSpan={2} className="text-center py-6 text-muted-foreground">{t("empty")}</TableCell></TableRow>}
-            {filtered.map((c) => <TableRow key={c.id}><TableCell className="font-medium">{c.full_name}</TableCell><TableCell>{c.phone}</TableCell></TableRow>)}
-          </TableBody>
-        </Table>
+      </div>
+
+      {/* Search and table */}
+      <Card className="border-0 bg-white/80 shadow-sm backdrop-blur-sm dark:bg-slate-900/80 p-4">
+        <div className="relative mb-4">
+          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            className="pl-9 bg-white dark:bg-slate-800"
+            placeholder={t("search")}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+        </div>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("fullName")}</TableHead>
+                <TableHead>{t("phone")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={2} className="text-center py-6 text-muted-foreground">
+                    {t("empty")}
+                  </TableCell>
+                </TableRow>
+              )}
+              {filtered.map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell className="font-medium">{c.full_name}</TableCell>
+                  <TableCell>{c.phone}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
     </div>
   );
