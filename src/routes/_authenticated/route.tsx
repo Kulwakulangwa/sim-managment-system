@@ -68,7 +68,7 @@ function Layout() {
     ? [
         { to: "/dashboard", label: "platformDashboard", icon: LayoutDashboard },
         { to: "/shops", label: "shops", icon: Building2 },
-        { to: "/audit", label: "auditLog", icon: History },          // ✅ super_admin only
+        { to: "/audit", label: "auditLog", icon: History },
         { to: "/errors", label: "errorMonitoring", icon: ShieldAlert },
         { to: "/help", label: "helpCenter", icon: BookOpen },
       ]
@@ -83,7 +83,6 @@ function Layout() {
         { to: "/expenses", label: "expenses", icon: Receipt, roles: ["shop_admin"] },
         { to: "/reports", label: "reports", icon: BarChart3, roles: ["shop_admin"] },
         { to: "/users", label: "staff", icon: UserCog, roles: ["shop_admin"] },
-        // ❌ Audit log removed from here – only super_admin can see it
         { to: "/trash", label: "trash", icon: Trash2, roles: ["shop_admin"] },
         { to: "/help", label: "helpCenter", icon: BookOpen },
       ];
@@ -111,13 +110,13 @@ function Layout() {
             to={it.to}
             onClick={() => setMobileOpen(false)}
             className={cn(
-              "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200",
               active
-                ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
-                : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                ? "bg-gradient-to-r from-[#C45BA0]/30 to-[#8B3A8F]/20 text-white font-medium shadow-[inset_0_1px_1px_rgba(255,255,255,0.08)]"
+                : "text-white/60 hover:bg-white/10 hover:text-white hover:shadow-sm",
             )}
           >
-            <Icon className="h-4 w-4" />
+            <Icon className={cn("h-4 w-4", active ? "text-[#C45BA0]" : "text-white/40")} />
             {t(it.label as any)}
           </Link>
         );
@@ -126,57 +125,102 @@ function Layout() {
   );
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <aside className="hidden lg:flex w-64 bg-sidebar text-sidebar-foreground flex-col border-r border-sidebar-border">
-        <div className="p-4 flex items-center gap-3 border-b border-sidebar-border">
-          <div className="grid h-9 w-9 place-items-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-            <Smartphone className="h-5 w-5" />
+    <div className="min-h-screen bg-[#F7F5FA] flex">
+      {/* Desktop sidebar – dark gradient with premium feel */}
+      <aside className="hidden lg:flex w-64 bg-gradient-to-b from-[#1F0A28] to-[#3A1442] text-white flex-col border-r border-white/5 shadow-xl">
+        <div className="p-5 flex items-center gap-3 border-b border-white/10">
+          <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[#C45BA0] to-[#8B3A8F] shadow-lg shadow-[#C45BA0]/30">
+            <Smartphone className="h-5 w-5 text-white" />
           </div>
           <div>
-            <p className="text-sm font-semibold">{t("appName")}</p>
-            <p className="text-xs text-sidebar-foreground/60 capitalize">{roleLabel}</p>
+            <p className="text-sm font-semibold tracking-wide">{t("appName")}</p>
+            <p className="text-[11px] text-white/40 capitalize">{roleLabel}</p>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto">{nav}</div>
-        <div className="p-3 border-t border-sidebar-border space-y-2">
-          <div className="flex items-center gap-1 text-xs">
-            <button onClick={() => setLang("en")} className={cn("px-2 py-1 rounded", lang === "en" ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/60")}>EN</button>
-            <button onClick={() => setLang("sw")} className={cn("px-2 py-1 rounded", lang === "sw" ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/60")}>SW</button>
+        <div className="flex-1 overflow-y-auto py-2">{nav}</div>
+        <div className="p-4 border-t border-white/10 space-y-3">
+          <div className="flex items-center gap-2 text-xs">
+            <button
+              onClick={() => setLang("en")}
+              className={cn(
+                "px-2 py-1 rounded transition",
+                lang === "en"
+                  ? "bg-white/20 text-white"
+                  : "text-white/40 hover:bg-white/10 hover:text-white/80",
+              )}
+            >
+              EN
+            </button>
+            <button
+              onClick={() => setLang("sw")}
+              className={cn(
+                "px-2 py-1 rounded transition",
+                lang === "sw"
+                  ? "bg-white/20 text-white"
+                  : "text-white/40 hover:bg-white/10 hover:text-white/80",
+              )}
+            >
+              SW
+            </button>
           </div>
-          <Button variant="ghost" size="sm" className="w-full justify-start text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" onClick={signOut}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start text-white/60 hover:bg-white/10 hover:text-white transition"
+            onClick={signOut}
+          >
             <LogOut className="mr-2 h-4 w-4" /> {t("signOut")}
           </Button>
         </div>
       </aside>
 
+      {/* Mobile overlay sidebar – same dark theme */}
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-40 flex">
-          <div className="w-64 bg-sidebar text-sidebar-foreground flex flex-col">
-            <div className="p-4 flex items-center gap-3 border-b border-sidebar-border">
-              <div className="grid h-9 w-9 place-items-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                <Smartphone className="h-5 w-5" />
+          <div className="w-64 bg-gradient-to-b from-[#1F0A28] to-[#3A1442] text-white flex flex-col shadow-2xl">
+            <div className="p-4 flex items-center gap-3 border-b border-white/10">
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[#C45BA0] to-[#8B3A8F] shadow-md">
+                <Smartphone className="h-5 w-5 text-white" />
               </div>
               <p className="text-sm font-semibold">{t("appName")}</p>
             </div>
-            <div className="flex-1 overflow-y-auto">{nav}</div>
-            <div className="p-3 border-t border-sidebar-border">
-              <Button variant="ghost" size="sm" className="w-full justify-start text-sidebar-foreground/80" onClick={signOut}>
+            <div className="flex-1 overflow-y-auto py-2">{nav}</div>
+            <div className="p-4 border-t border-white/10">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start text-white/60 hover:bg-white/10 hover:text-white transition"
+                onClick={signOut}
+              >
                 <LogOut className="mr-2 h-4 w-4" /> {t("signOut")}
               </Button>
             </div>
           </div>
-          <div className="flex-1 bg-black/40" onClick={() => setMobileOpen(false)} />
+          <div className="flex-1 bg-black/40 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
         </div>
       )}
 
       <main className="flex-1 flex flex-col min-w-0">
-        <header className="lg:hidden flex items-center justify-between border-b border-border p-3 bg-card">
-          <button onClick={() => setMobileOpen(true)} className="p-2"><Menu className="h-5 w-5" /></button>
-          <p className="text-sm font-semibold">{t("appName")}</p>
+        {/* Mobile header – matches the sidebar theme */}
+        <header className="lg:hidden flex items-center justify-between border-b border-border p-3 bg-white/80 backdrop-blur-sm">
+          <button onClick={() => setMobileOpen(true)} className="p-2">
+            <Menu className="h-5 w-5 text-slate-700" />
+          </button>
+          <p className="text-sm font-semibold text-slate-800">{t("appName")}</p>
           <div className="flex items-center gap-1 text-xs">
-            <button onClick={() => setLang("en")} className={lang === "en" ? "font-semibold" : "text-muted-foreground"}>EN</button>
-            <span>·</span>
-            <button onClick={() => setLang("sw")} className={lang === "sw" ? "font-semibold" : "text-muted-foreground"}>SW</button>
+            <button
+              onClick={() => setLang("en")}
+              className={lang === "en" ? "font-semibold text-slate-800" : "text-slate-400"}
+            >
+              EN
+            </button>
+            <span className="text-slate-300">·</span>
+            <button
+              onClick={() => setLang("sw")}
+              className={lang === "sw" ? "font-semibold text-slate-800" : "text-slate-400"}
+            >
+              SW
+            </button>
           </div>
         </header>
         <div className="flex-1 overflow-y-auto p-4 lg:p-8">
