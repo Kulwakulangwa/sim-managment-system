@@ -15,6 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Trash2, TrendingUp, DollarSign, Receipt } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useTheme } from "@/lib/theme";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/expenses")({ component: ExpensesPage });
 
@@ -25,6 +27,7 @@ function ExpensesPage() {
   const qc = useQueryClient();
   const shopId = useShopId();
   const { data: myRole } = useMyRole();
+  const { theme } = useTheme();
   const role = myRole?.role;
   // Both shop_admin and super_admin can delete
   const isAdmin = role === "shop_admin" || role === "super_admin";
@@ -79,11 +82,14 @@ function ExpensesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className={cn(
+      "space-y-6 -m-4 sm:-m-6 p-4 sm:p-6 min-h-full rounded-3xl",
+      theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
+    )}>
       {/* Header with gradient */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white shadow-xl">
-        <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-blue-500/20 blur-3xl" />
-        <div className="absolute bottom-0 left-20 h-24 w-24 rounded-full bg-emerald-500/20 blur-2xl" />
+        <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-pink-500/20 blur-3xl" />
+        <div className="absolute bottom-0 left-20 h-24 w-24 rounded-full bg-rose-500/20 blur-2xl" />
         <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold">{t("expenses")}</h1>
@@ -96,17 +102,19 @@ function ExpensesPage() {
             </div>
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-[#C45BA0] to-[#8B3A8F] text-white hover:shadow-lg hover:shadow-[#C45BA0]/30 transition-all">
+                <Button className="bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:shadow-lg hover:shadow-pink-500/30 transition-all">
                   <Plus className="mr-2 h-4 w-4" /> {t("add")}
                 </Button>
               </DialogTrigger>
-              <DialogContent>
-                <DialogHeader><DialogTitle>{t("expenses")}</DialogTitle></DialogHeader>
+              <DialogContent className={theme === "dark" ? "bg-slate-800 border-slate-700 text-white" : ""}>
+                <DialogHeader><DialogTitle className={theme === "dark" ? "text-white" : ""}>{t("expenses")}</DialogTitle></DialogHeader>
                 <div className="space-y-3">
                   <div>
-                    <Label>{t("category")}</Label>
+                    <Label className={theme === "dark" ? "text-slate-300" : ""}>{t("category")}</Label>
                     <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v as Cat })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger className={theme === "dark" ? "border-slate-700 bg-slate-900 text-white" : ""}>
+                        <SelectValue />
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="rent">{t("rent")}</SelectItem>
                         <SelectItem value="electricity">{t("electricity")}</SelectItem>
@@ -115,13 +123,48 @@ function ExpensesPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div><Label>{t("amount")}</Label><Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div>
-                  <div><Label>{t("date")}</Label><Input type="date" value={form.expense_date} onChange={(e) => setForm({ ...form, expense_date: e.target.value })} /></div>
-                  <div><Label>{t("note")}</Label><Textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></div>
+                  <div>
+                    <Label className={theme === "dark" ? "text-slate-300" : ""}>{t("amount")}</Label>
+                    <Input
+                      type="number"
+                      value={form.amount}
+                      onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                      className={theme === "dark" ? "border-slate-700 bg-slate-900 text-white placeholder-slate-400" : ""}
+                    />
+                  </div>
+                  <div>
+                    <Label className={theme === "dark" ? "text-slate-300" : ""}>{t("date")}</Label>
+                    <Input
+                      type="date"
+                      value={form.expense_date}
+                      onChange={(e) => setForm({ ...form, expense_date: e.target.value })}
+                      className={theme === "dark" ? "border-slate-700 bg-slate-900 text-white placeholder-slate-400" : ""}
+                    />
+                  </div>
+                  <div>
+                    <Label className={theme === "dark" ? "text-slate-300" : ""}>{t("note")}</Label>
+                    <Textarea
+                      value={form.note}
+                      onChange={(e) => setForm({ ...form, note: e.target.value })}
+                      className={theme === "dark" ? "border-slate-700 bg-slate-900 text-white placeholder-slate-400" : ""}
+                    />
+                  </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="ghost" onClick={() => setOpen(false)}>{t("cancel")}</Button>
-                  <Button onClick={() => add.mutate()} disabled={add.isPending}>{t("save")}</Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setOpen(false)}
+                    className={theme === "dark" ? "text-slate-300 hover:text-white hover:bg-slate-700" : ""}
+                  >
+                    {t("cancel")}
+                  </Button>
+                  <Button
+                    onClick={() => add.mutate()}
+                    disabled={add.isPending}
+                    className="bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:shadow-lg hover:shadow-pink-500/30"
+                  >
+                    {t("save")}
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -153,32 +196,37 @@ function ExpensesPage() {
       </div>
 
       {/* Table card */}
-      <Card className="border-0 bg-white/80 shadow-sm backdrop-blur-sm dark:bg-slate-900/80 p-4">
+      <Card className={cn(
+        "border-0 shadow-sm backdrop-blur-sm p-4",
+        theme === "dark"
+          ? "bg-slate-800/90 border-slate-700"
+          : "bg-white/80"
+      )}>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("date")}</TableHead>
-                <TableHead>{t("category")}</TableHead>
-                <TableHead className="text-right">{t("amount")}</TableHead>
-                <TableHead>{t("note")}</TableHead>
-                {isAdmin && <TableHead className="text-right">{t("actions")}</TableHead>}
+                <TableHead className={theme === "dark" ? "text-slate-300" : ""}>{t("date")}</TableHead>
+                <TableHead className={theme === "dark" ? "text-slate-300" : ""}>{t("category")}</TableHead>
+                <TableHead className={cn("text-right", theme === "dark" ? "text-slate-300" : "")}>{t("amount")}</TableHead>
+                <TableHead className={theme === "dark" ? "text-slate-300" : ""}>{t("note")}</TableHead>
+                {isAdmin && <TableHead className={cn("text-right", theme === "dark" ? "text-slate-300" : "")}>{t("actions")}</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={isAdmin ? 5 : 4} className="text-center py-6 text-muted-foreground">
+                  <TableCell colSpan={isAdmin ? 5 : 4} className={cn("text-center py-6", theme === "dark" ? "text-slate-400" : "text-muted-foreground")}>
                     {t("empty")}
                   </TableCell>
                 </TableRow>
               )}
               {rows.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell className="text-xs">{formatDate(r.expense_date)}</TableCell>
-                  <TableCell>{catLabel(r.category as Cat)}</TableCell>
-                  <TableCell className="text-right font-semibold">{formatTZS(r.amount)}</TableCell>
-                  <TableCell className="text-muted-foreground">{r.note ?? "—"}</TableCell>
+                <TableRow key={r.id} className={theme === "dark" ? "hover:bg-slate-700/50" : "hover:bg-muted/50"}>
+                  <TableCell className={cn("text-xs", theme === "dark" ? "text-slate-300" : "")}>{formatDate(r.expense_date)}</TableCell>
+                  <TableCell className={theme === "dark" ? "text-slate-300" : ""}>{catLabel(r.category as Cat)}</TableCell>
+                  <TableCell className={cn("text-right font-semibold", theme === "dark" ? "text-slate-200" : "")}>{formatTZS(r.amount)}</TableCell>
+                  <TableCell className={theme === "dark" ? "text-slate-400" : "text-muted-foreground"}>{r.note ?? "—"}</TableCell>
                   {isAdmin && (
                     <TableCell className="text-right">
                       <Button
@@ -186,7 +234,7 @@ function ExpensesPage() {
                         size="sm"
                         onClick={() => handleDelete(r.id)}
                         disabled={del.isPending}
-                        className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20"
+                        className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:text-rose-300 dark:hover:bg-rose-950/20"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
