@@ -32,6 +32,7 @@ function POS() {
   const [warrantyMonths, setWarrantyMonths] = useState("0");
   const [installmentMonths, setInstallmentMonths] = useState("3");
   const [downPayment, setDownPayment] = useState("0");
+  const [imei, setImei] = useState(""); // <-- NEW
 
   const { data: items = [] } = useQuery({
     queryKey: ["inventory-pos"],
@@ -48,7 +49,7 @@ function POS() {
 
   const filtered = useMemo(() => items.filter((i) => {
     const s = q.toLowerCase();
-    return !s || `${i.brand ?? ""} ${i.model ?? ""} ${i.name ?? ""} ${i.imei ?? ""}`.toLowerCase().includes(s);
+    return !s || `${i.brand ?? ""} ${i.model ?? ""} ${i.name ?? ""}`.toLowerCase().includes(s);
   }), [items, q]);
 
   const selected = items.find((i) => i.id === selectedId) ?? null;
@@ -56,11 +57,35 @@ function POS() {
   const subtotal = unit * qty;
   const total = Math.max(0, subtotal - Number(discount || 0));
 
+  // Reset IMEI when selected item changes
+  const handleSelectItem = (id: string) => {
+    setSelectedId(id);
+    setQty(1);
+    setImei(""); // reset IMEI
+  };
+
   const complete = useMutation({
     mutationFn: async () => {
       if (!selected) throw new Error("Select an item");
       if (qty < 1 || qty > selected.quantity) throw new Error("Invalid quantity");
       if (!shopId) throw new Error("No shop context");
+
+      // Validate IMEI for phone items
+      if (selected.item_type === "phone" && !imei.trim()) {
+        throw new Error("IMEI is required for phone sales");
+      }
+
+      // Optional: check if IMEI already sold (for phones)
+      if (selected.item_type === "phone" && imei.trim()) {
+        const { data: existing } = await supabase
+          .from("sales")
+          .select("id")
+          .eq("imei", imei.trim())
+          .maybeSingle();
+        if (existing) {
+          throw new Error("This IMEI has already been sold");
+        }
+      }
 
       let custId: string | null = customerId !== "none" ? customerId : null;
       if (!custId && (newCust.name || newCust.phone) && paymentType === "installment") {
@@ -84,6 +109,7 @@ function POS() {
         payment_type: paymentType,
         sold_by: userRes.user?.id ?? null,
         shop_id: shopId,
+        imei: selected.item_type === "phone" ? imei.trim() : null, // <-- store IMEI
       }).select("id, sale_date").single();
       if (se) throw se;
 
@@ -138,6 +164,7 @@ function POS() {
         customerPhone: cust?.phone ?? newCust.phone ?? null,
         paymentType: paymentType === "cash" ? t("cash") : t("installment"),
         warrantyMonths: Number(warrantyMonths || 0) || null,
+        // receipt can optionally include IMEI
       });
       qc.invalidateQueries();
       navigate({ to: "/sales" });
@@ -156,7 +183,7 @@ function POS() {
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 className="pl-9"
-                placeholder="Search by brand, model, name, or IMEI"
+                placeholder="Search by brand, model, or name"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
               />
@@ -169,7 +196,7 @@ function POS() {
                 return (
                   <button
                     key={i.id}
-                    onClick={() => { setSelectedId(i.id); setQty(1); }}
+                    onClick={() => handleSelectItem(i.id)}
                     className={`w-full text-left p-3 flex items-center gap-3 hover:bg-accent transition ${active ? "bg-accent" : ""}`}
                   >
                     {i.photo_url && (
@@ -178,8 +205,7 @@ function POS() {
                     <div className="flex-1 min-w-0">
                       <p className="font-medium">{label}</p>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        {i.imei && <span className="font-mono">IMEI: {i.imei}</span>}
-                        <span>· Stock: {i.quantity}</span>
+                        <span>Stock: {i.quantity}</span>
                         {i.condition && <span>· {i.condition}</span>}
                       </div>
                     </div>
@@ -204,12 +230,24 @@ function POS() {
                     <p className="text-sm font-medium">
                       {selected.item_type === "phone" ? `${selected.brand ?? ""} ${selected.model ?? ""}` : selected.name}
                     </p>
-                    {selected.imei && (
-                      <p className="text-xs font-mono text-muted-foreground">IMEI: {selected.imei}</p>
-                    )}
                     <p className="text-xs text-muted-foreground">{formatTZS(unit)} · Stock: {selected.quantity}</p>
                   </div>
                 </div>
+
+                {/* IMEI input – only for phones */}
+                {selected.item_type === "phone" && (
+                  <div>
+                    <Label className="text-red-500">IMEI *</Label>
+                    <Input
+                      value={imei}
+                      onChange={(e) => setImei(e.target.value)}
+                      placeholder="Enter IMEI number"
+                      className="border-red-300 focus:border-red-500"
+                    />
+                    {!imei.trim() && <p className="text-xs text-red-500 mt-1">IMEI is required for phone sales</p>}
+                  </div>
+                )}
+
                 <div>
                   <Label>{t("quantity")}</Label>
                   <div className="flex items-center gap-2">
@@ -259,7 +297,14 @@ function POS() {
                   <div className="flex justify-between"><span>{t("discount")}</span><span>-{formatTZS(Number(discount || 0))}</span></div>
                   <div className="flex justify-between text-base font-bold pt-1"><span>{t("grandTotal")}</span><span>{formatTZS(total)}</span></div>
                 </div>
-                <Button className="w-full" size="lg" onClick={() => complete.mutate()} disabled={complete.isPending}>{t("completeSale")}</Button>
+                <Button
+                  className="w-full"
+                  size="lg"
+                  onClick={() => complete.mutate()}
+                  disabled={complete.isPending || (selected.item_type === "phone" && !imei.trim())}
+                >
+                  {t("completeSale")}
+                </Button>
               </>
             ) : (
               <p className="text-sm text-muted-foreground py-8 text-center">{t("selectItem")}</p>
