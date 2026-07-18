@@ -1,4 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+// src/routes/_authenticated/inventory.tsx
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
@@ -16,8 +17,37 @@ import { Plus, Search, Pencil, ShoppingCart } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_authenticated/inventory")({ component: InventoryPage });
+// ─── Route Guard ──────────────────────────────────────────────
+export const Route = createFileRoute("/_authenticated/inventory")({
+  beforeLoad: async () => {
+    // 1. Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw redirect({ to: "/auth" });
 
+    // 2. Fetch user's role
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .single();
+
+    const role = roleData?.role;
+
+    // 3. Hard‑coded super admin email (always allowed)
+    const isSuperAdminByEmail = user.email === "kulwakulangwa@gmail.com";
+
+    // 4. Allowed roles
+    const allowedRoles = ["super_admin", "shop_admin"];
+    const isAllowed = allowedRoles.includes(role ?? "") || isSuperAdminByEmail;
+
+    if (!isAllowed) {
+      throw redirect({ to: "/dashboard" });
+    }
+  },
+  component: InventoryPage,
+});
+
+// ─── Component ─────────────────────────────────────────────────
 type FormState = {
   item_type: "phone" | "accessory";
   brand: string;
