@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Download } from "lucide-react";
+import { Plus, Download, ShoppingCart, TrendingUp, DollarSign } from "lucide-react";
 import { generateReceipt } from "@/lib/receipt";
 
 export const Route = createFileRoute("/_authenticated/sales/")({ component: SalesPage });
@@ -27,68 +27,124 @@ function SalesPage() {
     },
   });
 
+  // Compute stats
+  const totalSales = sales.reduce((sum, s) => {
+    const total = (Number(s.sell_price) - Number(s.discount)) * Number(s.quantity);
+    return sum + total;
+  }, 0);
+  const totalProfit = sales.reduce((sum, s) => sum + Number(s.profit ?? 0), 0);
+  const totalItems = sales.reduce((sum, s) => sum + Number(s.quantity), 0);
+
+  const stats = [
+    { label: t("totalSales"), value: formatTZS(totalSales), icon: TrendingUp },
+    { label: t("totalProfit"), value: formatTZS(totalProfit), icon: DollarSign },
+    { label: t("itemsSold"), value: String(totalItems), icon: ShoppingCart },
+  ];
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{t("sales")}</h1>
-        <Link to="/sales/pos"><Button><Plus className="mr-2 h-4 w-4" />{t("newSale")}</Button></Link>
+    <div className="space-y-6">
+      {/* Header with gradient */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white shadow-xl">
+        <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-blue-500/20 blur-3xl" />
+        <div className="absolute bottom-0 left-20 h-24 w-24 rounded-full bg-emerald-500/20 blur-2xl" />
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">{t("sales")}</h1>
+            <p className="mt-1 text-sm text-white/70">View and manage all sales transactions</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 backdrop-blur-sm">
+              <ShoppingCart className="h-4 w-4 text-white/60" />
+              <span className="text-sm">{sales.length} sales</span>
+            </div>
+            <Link to="/sales/pos">
+              <Button className="bg-gradient-to-r from-[#C45BA0] to-[#8B3A8F] text-white hover:shadow-lg hover:shadow-[#C45BA0]/30 transition-all">
+                <Plus className="mr-2 h-4 w-4" /> {t("newSale")}
+              </Button>
+            </Link>
+          </div>
+        </div>
+        {/* Quick stats */}
+        <div className="relative z-10 mt-4 flex flex-wrap gap-4 text-sm">
+          {stats.map((s) => (
+            <div key={s.label} className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 backdrop-blur-sm">
+              <s.icon className="h-4 w-4 text-white/60" />
+              <span>{s.label}: {s.value}</span>
+            </div>
+          ))}
+        </div>
       </div>
-      <Card className="p-4 overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("date")}</TableHead>
-              <TableHead>Item</TableHead>
-              <TableHead>{t("customer")}</TableHead>
-              <TableHead>{t("paymentType")}</TableHead>
-              <TableHead className="text-right">{t("quantity")}</TableHead>
-              <TableHead className="text-right">{t("total")}</TableHead>
-              <TableHead className="text-right">{t("profit")}</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sales.length === 0 && (
-              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-6">{t("empty")}</TableCell></TableRow>
-            )}
-            {sales.map((s) => {
-              const it = s.inventory_items;
-              const label = it ? (it.item_type === "phone" ? `${it.brand ?? ""} ${it.model ?? ""}`.trim() : (it.name ?? "")) : "—";
-              const total = (Number(s.sell_price) - Number(s.discount)) * Number(s.quantity);
-              return (
-                <TableRow key={s.id}>
-                  <TableCell className="text-xs">{formatDate(s.sale_date)}</TableCell>
-                  <TableCell className="font-medium">{label}</TableCell>
-                  <TableCell>{s.customers?.full_name ?? "—"}</TableCell>
-                  <TableCell>
-                    <Badge variant={s.payment_type === "cash" ? "secondary" : "outline"}>
-                      {s.payment_type === "cash" ? t("cash") : t("installment")}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">{s.quantity}</TableCell>
-                  <TableCell className="text-right font-semibold">{formatTZS(total)}</TableCell>
-                  <TableCell className="text-right text-success">{formatTZS(Number(s.profit ?? 0))}</TableCell>
-                  <TableCell className="text-right">
-                    <Button size="sm" variant="ghost" onClick={() => generateReceipt({
-                      shopName: t("appName"),
-                      saleId: s.id,
-                      date: s.sale_date,
-                      itemLabel: label,
-                      quantity: s.quantity,
-                      unitPrice: Number(s.sell_price),
-                      discount: Number(s.discount),
-                      total,
-                      customerName: s.customers?.full_name,
-                      customerPhone: s.customers?.phone,
-                      cashier: s.profiles?.full_name,
-                      paymentType: s.payment_type === "cash" ? t("cash") : t("installment"),
-                    })}><Download className="h-4 w-4" /></Button>
+
+      {/* Table card */}
+      <Card className="border-0 bg-white/80 shadow-sm backdrop-blur-sm dark:bg-slate-900/80 p-4">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="dark:text-slate-300">{t("date")}</TableHead>
+                <TableHead className="dark:text-slate-300">Item</TableHead>
+                <TableHead className="dark:text-slate-300">{t("customer")}</TableHead>
+                <TableHead className="dark:text-slate-300">{t("paymentType")}</TableHead>
+                <TableHead className="text-right dark:text-slate-300">{t("quantity")}</TableHead>
+                <TableHead className="text-right dark:text-slate-300">{t("total")}</TableHead>
+                <TableHead className="text-right dark:text-slate-300">{t("profit")}</TableHead>
+                <TableHead className="dark:text-slate-300" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sales.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center text-muted-foreground dark:text-slate-400 py-6">
+                    {t("empty")}
                   </TableCell>
                 </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+              )}
+              {sales.map((s) => {
+                const it = s.inventory_items;
+                const label = it ? (it.item_type === "phone" ? `${it.brand ?? ""} ${it.model ?? ""}`.trim() : (it.name ?? "")) : "—";
+                const total = (Number(s.sell_price) - Number(s.discount)) * Number(s.quantity);
+                return (
+                  <TableRow key={s.id} className="hover:bg-muted/50 transition dark:hover:bg-slate-800/50">
+                    <TableCell className="text-xs dark:text-slate-300">{formatDate(s.sale_date)}</TableCell>
+                    <TableCell className="font-medium dark:text-white">{label}</TableCell>
+                    <TableCell className="dark:text-slate-300">{s.customers?.full_name ?? "—"}</TableCell>
+                    <TableCell>
+                      <Badge variant={s.payment_type === "cash" ? "secondary" : "outline"} className="dark:bg-slate-700 dark:text-slate-200 dark:border-slate-600">
+                        {s.payment_type === "cash" ? t("cash") : t("installment")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right dark:text-slate-300">{s.quantity}</TableCell>
+                    <TableCell className="text-right font-semibold dark:text-white">{formatTZS(total)}</TableCell>
+                    <TableCell className="text-right text-success dark:text-emerald-400">{formatTZS(Number(s.profit ?? 0))}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => generateReceipt({
+                          shopName: t("appName"),
+                          saleId: s.id,
+                          date: s.sale_date,
+                          itemLabel: label,
+                          quantity: s.quantity,
+                          unitPrice: Number(s.sell_price),
+                          discount: Number(s.discount),
+                          total,
+                          customerName: s.customers?.full_name,
+                          customerPhone: s.customers?.phone,
+                          cashier: s.profiles?.full_name,
+                          paymentType: s.payment_type === "cash" ? t("cash") : t("installment"),
+                        })}
+                        className="dark:text-slate-300 dark:hover:text-white"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
     </div>
   );
