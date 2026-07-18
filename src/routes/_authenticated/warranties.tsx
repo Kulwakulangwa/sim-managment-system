@@ -13,6 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { ShieldCheck, AlertCircle, CheckCircle, FileText } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useTheme } from "@/lib/theme";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/warranties")({ component: WarrantiesPage });
 
@@ -20,6 +22,7 @@ function WarrantiesPage() {
   const { t } = useI18n();
   const qc = useQueryClient();
   const shopId = useShopId();
+  const { theme } = useTheme();
   const [claim, setClaim] = useState<{ id: string; open: boolean; note: string }>({ id: "", open: false, note: "" });
 
   const { data: rows = [] } = useQuery({
@@ -50,11 +53,14 @@ function WarrantiesPage() {
   const statusLabel = (s: string) => s === "active" ? t("active") : s === "expired" ? t("expired") : t("claimed");
 
   return (
-    <div className="space-y-6">
+    <div className={cn(
+      "space-y-6 -m-4 sm:-m-6 p-4 sm:p-6 min-h-full rounded-3xl",
+      theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
+    )}>
       {/* Header with gradient */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white shadow-xl">
-        <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-blue-500/20 blur-3xl" />
-        <div className="absolute bottom-0 left-20 h-24 w-24 rounded-full bg-emerald-500/20 blur-2xl" />
+        <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-pink-500/20 blur-3xl" />
+        <div className="absolute bottom-0 left-20 h-24 w-24 rounded-full bg-rose-500/20 blur-2xl" />
         <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold">{t("warranties")}</h1>
@@ -85,24 +91,29 @@ function WarrantiesPage() {
       </div>
 
       {/* Table card */}
-      <Card className="border-0 bg-white/80 shadow-sm backdrop-blur-sm dark:bg-slate-900/80 p-4">
+      <Card className={cn(
+        "border-0 shadow-sm backdrop-blur-sm p-4",
+        theme === "dark"
+          ? "bg-slate-800/90 border-slate-700"
+          : "bg-white/80"
+      )}>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("customer")}</TableHead>
-                <TableHead>Item</TableHead>
-                <TableHead>{t("startDate")}</TableHead>
-                <TableHead>{t("endDate")}</TableHead>
-                <TableHead>{t("warrantyPeriod")}</TableHead>
-                <TableHead>{t("status")}</TableHead>
-                <TableHead />
+                <TableHead className={theme === "dark" ? "text-slate-300" : ""}>{t("customer")}</TableHead>
+                <TableHead className={theme === "dark" ? "text-slate-300" : ""}>Item</TableHead>
+                <TableHead className={theme === "dark" ? "text-slate-300" : ""}>{t("startDate")}</TableHead>
+                <TableHead className={theme === "dark" ? "text-slate-300" : ""}>{t("endDate")}</TableHead>
+                <TableHead className={theme === "dark" ? "text-slate-300" : ""}>{t("warrantyPeriod")}</TableHead>
+                <TableHead className={theme === "dark" ? "text-slate-300" : ""}>{t("status")}</TableHead>
+                <TableHead className={theme === "dark" ? "text-slate-300" : ""} />
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+                  <TableCell colSpan={7} className={cn("text-center py-6", theme === "dark" ? "text-slate-400" : "text-muted-foreground")}>
                     {t("empty")}
                   </TableCell>
                 </TableRow>
@@ -113,12 +124,14 @@ function WarrantiesPage() {
                 const expired = new Date(w.end_date) < new Date();
                 const status = expired && w.status === "active" ? "expired" : w.status;
                 return (
-                  <TableRow key={w.id}>
-                    <TableCell>{w.sales?.customers?.full_name ?? "—"}</TableCell>
-                    <TableCell className="font-medium">{label}</TableCell>
-                    <TableCell className="text-xs">{formatDate(w.start_date)}</TableCell>
-                    <TableCell className="text-xs">{formatDate(w.end_date)}</TableCell>
-                    <TableCell>{w.period_months} mo</TableCell>
+                  <TableRow key={w.id} className={theme === "dark" ? "hover:bg-slate-700/50" : "hover:bg-muted/50"}>
+                    <TableCell className={theme === "dark" ? "text-slate-300" : ""}>
+                      {w.sales?.customers?.full_name ?? "—"}
+                    </TableCell>
+                    <TableCell className={cn("font-medium", theme === "dark" ? "text-slate-200" : "")}>{label}</TableCell>
+                    <TableCell className={cn("text-xs", theme === "dark" ? "text-slate-300" : "")}>{formatDate(w.start_date)}</TableCell>
+                    <TableCell className={cn("text-xs", theme === "dark" ? "text-slate-300" : "")}>{formatDate(w.end_date)}</TableCell>
+                    <TableCell className={theme === "dark" ? "text-slate-300" : ""}>{w.period_months} mo</TableCell>
                     <TableCell>
                       <Badge
                         variant={
@@ -128,7 +141,7 @@ function WarrantiesPage() {
                             ? "outline"
                             : "destructive"
                         }
-                        className="capitalize"
+                        className={cn("capitalize", theme === "dark" && status !== "active" && status !== "claimed" ? "border-red-700 text-red-300" : "")}
                       >
                         {statusLabel(status)}
                       </Badge>
@@ -139,7 +152,10 @@ function WarrantiesPage() {
                           size="sm"
                           variant="outline"
                           onClick={() => setClaim({ id: w.id, open: true, note: "" })}
-                          className="border-[#C45BA0]/30 text-[#C45BA0] hover:bg-[#C45BA0]/10"
+                          className={cn(
+                            "border-pink-500/30 text-pink-500 hover:bg-pink-500/10",
+                            theme === "dark" ? "border-pink-400/30 text-pink-400 hover:bg-pink-400/10" : ""
+                          )}
                         >
                           {t("fileClaim")}
                         </Button>
@@ -155,24 +171,31 @@ function WarrantiesPage() {
 
       {/* Claim dialog */}
       <Dialog open={claim.open} onOpenChange={(v) => setClaim({ ...claim, open: v })}>
-        <DialogContent>
+        <DialogContent className={theme === "dark" ? "bg-slate-800 border-slate-700 text-white" : ""}>
           <DialogHeader>
-            <DialogTitle>{t("fileClaim")}</DialogTitle>
+            <DialogTitle className={theme === "dark" ? "text-white" : ""}>{t("fileClaim")}</DialogTitle>
           </DialogHeader>
           <Textarea
             value={claim.note}
             onChange={(e) => setClaim({ ...claim, note: e.target.value })}
             placeholder={t("issue")}
-            className="min-h-[100px]"
+            className={cn(
+              "min-h-[100px]",
+              theme === "dark" ? "border-slate-700 bg-slate-900 text-white placeholder-slate-400" : ""
+            )}
           />
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setClaim({ id: "", open: false, note: "" })}>
+            <Button
+              variant="ghost"
+              onClick={() => setClaim({ id: "", open: false, note: "" })}
+              className={theme === "dark" ? "text-slate-300 hover:text-white hover:bg-slate-700" : ""}
+            >
               {t("cancel")}
             </Button>
             <Button
               onClick={() => fileClaim.mutate()}
               disabled={fileClaim.isPending || !claim.note.trim()}
-              className="bg-gradient-to-r from-[#C45BA0] to-[#8B3A8F] text-white hover:shadow-lg hover:shadow-[#C45BA0]/30 transition-all"
+              className="bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:shadow-lg hover:shadow-pink-500/30 transition-all"
             >
               {fileClaim.isPending ? "Filing…" : t("save")}
             </Button>
