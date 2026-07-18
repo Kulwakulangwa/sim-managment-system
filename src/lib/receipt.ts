@@ -16,33 +16,62 @@ export interface ReceiptInput {
   total: number;
   paymentType: string;
   warrantyMonths?: number | null;
+  imei?: string | null; // New optional field
 }
 
 export function generateReceipt(input: ReceiptInput) {
   // A5 portrait
   const doc = new jsPDF({ unit: "mm", format: "a5" });
   const w = doc.internal.pageSize.getWidth();
+  const pink = [236, 72, 153]; // pink-500
+  const rose = [225, 29, 72]; // rose-500
+  const lightPink = [252, 231, 243]; // pink-100
 
+  // Header with pink gradient-like effect
+  doc.setFillColor(pink[0], pink[1], pink[2]);
+  doc.rect(0, 0, w, 28, "F");
+
+  doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.text(input.shopName, w / 2, 15, { align: "center" });
+  doc.setFontSize(18);
+  doc.text(input.shopName, w / 2, 14, { align: "center" });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.text("Sales Receipt / Risiti", w / 2, 21, { align: "center" });
 
-  doc.setDrawColor(180);
-  doc.line(10, 25, w - 10, 25);
+  // Reset text color for the rest
+  doc.setTextColor(0, 0, 0);
 
+  // Receipt details
   doc.setFontSize(9);
-  doc.text(`Receipt #: ${input.saleId.slice(0, 8).toUpperCase()}`, 10, 32);
-  doc.text(`Date: ${formatDateTime(input.date)}`, 10, 37);
-  if (input.cashier) doc.text(`Cashier: ${input.cashier}`, 10, 42);
-  if (input.customerName) doc.text(`Customer: ${input.customerName}`, w - 10, 32, { align: "right" });
-  if (input.customerPhone) doc.text(`Phone: ${input.customerPhone}`, w - 10, 37, { align: "right" });
+  let y = 32;
+  doc.text(`Receipt #: ${input.saleId.slice(0, 8).toUpperCase()}`, 10, y);
+  y += 5;
+  doc.text(`Date: ${formatDateTime(input.date)}`, 10, y);
+  y += 5;
+  if (input.cashier) {
+    doc.text(`Cashier: ${input.cashier}`, 10, y);
+    y += 5;
+  }
+  if (input.customerName) {
+    doc.text(`Customer: ${input.customerName}`, w - 10, 32, { align: "right" });
+    if (input.customerPhone) {
+      doc.text(`Phone: ${input.customerPhone}`, w - 10, 37, { align: "right" });
+    }
+  }
   doc.text(`Payment: ${input.paymentType}`, w - 10, 42, { align: "right" });
 
+  // IM
+  if (input.imei) {
+    doc.setFont("helvetica", "bold");
+    doc.text(`IMEI: ${input.imei}`, 10, y + 4);
+    doc.setFont("helvetica", "normal");
+    y += 8;
+  }
+
+  // Table
   autoTable(doc, {
-    startY: 48,
+    startY: Math.max(y + 2, 48),
     head: [["Item", "Qty", "Unit", "Total"]],
     body: [
       [
@@ -53,12 +82,12 @@ export function generateReceipt(input: ReceiptInput) {
       ],
     ],
     styles: { fontSize: 9 },
-    headStyles: { fillColor: [30, 100, 100] },
+    headStyles: { fillColor: pink, textColor: [255, 255, 255] },
     margin: { left: 10, right: 10 },
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let y = (doc as any).lastAutoTable.finalY + 6;
+  y = (doc as any).lastAutoTable.finalY + 6;
   const right = w - 10;
   doc.setFontSize(10);
   doc.text(`Subtotal: ${formatTZS(input.unitPrice * input.quantity)}`, right, y, { align: "right" });
@@ -80,5 +109,8 @@ export function generateReceipt(input: ReceiptInput) {
   doc.setFontSize(9);
   doc.text("Thank you / Asante sana!", w / 2, y, { align: "center" });
 
-  doc.save(`receipt-${input.saleId.slice(0, 8)}.pdf`);
+  // Instead of auto-download, return the PDF blob URL for user action
+  const pdfBlob = doc.output("blob");
+  const url = URL.createObjectURL(pdfBlob);
+  return url;
 }
