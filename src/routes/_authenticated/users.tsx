@@ -48,12 +48,17 @@ function UsersPage() {
     email: "", password: "", full_name: "", phone: "", role: "cashier",
   });
 
-  // Fetch staff list
+  // Fetch staff list – for shop_admin, exclude other shop_admin roles
   const { data: staff = [] } = useQuery({
     queryKey: ["staff", shopId],
     enabled: !!shopId || isSuper,
     queryFn: async () => {
-      const { data: roles } = await supabase.from("user_roles").select("user_id, role").eq("shop_id", shopId!);
+      let query = supabase.from("user_roles").select("user_id, role").eq("shop_id", shopId!);
+      // If not super admin, do NOT show other shop_admin users
+      if (!isSuper) {
+        query = query.neq("role", "shop_admin");
+      }
+      const { data: roles } = await query;
       const ids = (roles ?? []).map((r) => r.user_id);
       if (!ids.length) return [];
       const { data: profiles } = await supabase.from("profiles").select("*").in("id", ids);
@@ -66,20 +71,29 @@ function UsersPage() {
 
   const add = useMutation({
     mutationFn: async () => createFn({ data: form }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["staff"] }); setOpen(false); setForm({ email: "", password: "", full_name: "", phone: "", role: "cashier" }); toast.success(t("save")); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["staff"] });
+      setOpen(false);
+      setForm({ email: "", password: "", full_name: "", phone: "", role: "cashier" });
+      toast.success(t("save"));
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const remove = useMutation({
     mutationFn: async (user_id: string) => deleteFn({ data: { user_id } }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["staff"] }); toast.success(t("save")); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["staff"] });
+      toast.success(t("save"));
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  // Stats
+  // Stats – only staff roles (cashier, salesperson, technician) for shop_admin
   const total = staff.length;
-  const admins = staff.filter((s) => s.role === "shop_admin").length;
+  const admins = staff.filter((s) => s.role === "shop_admin").length; // will be 0 for shop_admin
   const cashiers = staff.filter((s) => s.role === "cashier").length;
+  const salespersons = staff.filter((s) => s.role === "salesperson").length;
   const technicians = staff.filter((s) => s.role === "technician").length;
 
   const stats = [
@@ -88,6 +102,9 @@ function UsersPage() {
     { label: t("cashiers"), value: String(cashiers), icon: User },
     { label: t("technicians"), value: String(technicians), icon: Shield },
   ];
+
+  // For shop_admin, hide the "shopAdmins" stat since they can't see other admins
+  const displayStats = isSuper ? stats : stats.filter((s) => s.label !== t("shopAdmins"));
 
   return (
     <div className={cn(
@@ -191,7 +208,7 @@ function UsersPage() {
 
       {/* Stats – matching dashboard */}
       <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
-        {stats.map((s) => (
+        {displayStats.map((s) => (
           <div key={s.label} className="rounded-2xl bg-white/80 backdrop-blur-sm border border-black/5 shadow-sm p-4 flex items-center justify-between dark:bg-slate-800/90 dark:border-slate-700/50">
             <div>
               <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground dark:text-slate-400">{s.label}</p>
