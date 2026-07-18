@@ -10,6 +10,44 @@ import { TrendingUp, DollarSign, Receipt, BarChart3, Package, ShoppingCart } fro
 
 export const Route = createFileRoute("/_authenticated/reports")({ component: ReportsPage });
 
+// ─── Colored badge mapping (matches dashboard) ──────────────
+const TILE_GRADIENTS: Record<string, string> = {
+  ember: "bg-gradient-to-br from-[#F2994A] to-[#F2C94C]",
+  wine: "bg-gradient-to-br from-[#6B2338] to-[#3C1524]",
+  crimson: "bg-gradient-to-br from-[#E63965] to-[#A81F49]",
+  slate: "bg-gradient-to-br from-[#4A4458] to-[#2E2A38]",
+};
+
+// ─── Stat Card ────────────────────────────────────────────────
+// Reusable component that matches the dashboard style.
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  badge,
+}: {
+  label: string;
+  value: string;
+  icon: React.ElementType;
+  badge: keyof typeof TILE_GRADIENTS;
+}) {
+  return (
+    <div className="rounded-2xl bg-white/80 backdrop-blur-sm border border-black/5 shadow-sm hover:shadow-md transition-shadow p-4 flex flex-col gap-3 dark:bg-slate-900/80">
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+        <span
+          className={`inline-flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-sm ${TILE_GRADIENTS[badge]}`}
+        >
+          <Icon className="h-4 w-4" />
+        </span>
+      </div>
+      <div>
+        <p className="text-lg sm:text-xl font-semibold text-slate-800 dark:text-white truncate">{value}</p>
+      </div>
+    </div>
+  );
+}
+
 function ReportsPage() {
   const { t } = useI18n();
 
@@ -39,10 +77,10 @@ function ReportsPage() {
   });
 
   const stats = [
-    { label: t("monthSales"), value: formatTZS(data?.totalRev ?? 0), icon: ShoppingCart, color: "text-emerald-400" },
-    { label: t("monthProfit"), value: formatTZS(data?.totalProfit ?? 0), icon: TrendingUp, color: "text-blue-400" },
-    { label: t("expenses"), value: formatTZS(data?.totalExp ?? 0), icon: Receipt, color: "text-amber-400" },
-    { label: `${t("profit")} (net)`, value: formatTZS(data?.netProfit ?? 0), icon: DollarSign, color: "text-rose-400" },
+    { label: t("monthSales"), value: formatTZS(data?.totalRev ?? 0), icon: ShoppingCart, badge: "ember" },
+    { label: t("monthProfit"), value: formatTZS(data?.totalProfit ?? 0), icon: TrendingUp, badge: "crimson" },
+    { label: t("expenses"), value: formatTZS(data?.totalExp ?? 0), icon: Receipt, badge: "wine" },
+    { label: `${t("profit")} (net)`, value: formatTZS(data?.netProfit ?? 0), icon: DollarSign, badge: "slate" },
   ];
 
   return (
@@ -65,20 +103,10 @@ function ReportsPage() {
         </div>
       </div>
 
-      {/* Stats cards */}
+      {/* Stats cards – now using the same colored badges as dashboard */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
-          <Card key={s.label} className="border-0 bg-white/80 shadow-sm backdrop-blur-sm dark:bg-slate-900/80 transition hover:shadow-md">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">{s.label}</p>
-                <p className="text-lg font-bold">{s.value}</p>
-              </div>
-              <div className={`rounded-full p-2 bg-white/10 ring-1 ring-white/20 ${s.color}`}>
-                <s.icon className="h-4 w-4" />
-              </div>
-            </CardContent>
-          </Card>
+          <StatCard key={s.label} {...s} />
         ))}
       </div>
 
