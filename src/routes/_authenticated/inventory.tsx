@@ -15,6 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Pencil, ShoppingCart, Upload, X, Package, AlertTriangle } from "lucide-react";
 import { useState, useRef } from "react";
 import { toast } from "sonner";
+import { useTheme } from "@/lib/theme";
+import { cn } from "@/lib/utils";
 
 // ─── Route Guard ──────────────────────────────────────────────
 export const Route = createFileRoute("/_authenticated/inventory")({
@@ -71,6 +73,7 @@ function InventoryPage() {
   const { t } = useI18n();
   const qc = useQueryClient();
   const shopId = useShopId();
+  const { theme } = useTheme();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -87,7 +90,6 @@ function InventoryPage() {
     },
   });
 
-  // Compute some stats for the header
   const totalItems = items.length;
   const lowStockItems = items.filter((i) => i.quantity <= i.low_stock_threshold).length;
 
@@ -191,11 +193,14 @@ function InventoryPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className={cn(
+      "space-y-6 -m-4 sm:-m-6 p-4 sm:p-6 min-h-full rounded-3xl",
+      theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
+    )}>
       {/* Header with gradient */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white shadow-xl">
-        <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-blue-500/20 blur-3xl" />
-        <div className="absolute bottom-0 left-20 h-24 w-24 rounded-full bg-emerald-500/20 blur-2xl" />
+        <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-pink-500/20 blur-3xl" />
+        <div className="absolute bottom-0 left-20 h-24 w-24 rounded-full bg-rose-500/20 blur-2xl" />
         <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold">{t("inventory")}</h1>
@@ -219,7 +224,7 @@ function InventoryPage() {
             </Link>
             <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setForm(empty); setEditingId(null); } }}>
               <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-[#C45BA0] to-[#8B3A8F] text-white hover:shadow-lg hover:shadow-[#C45BA0]/30 transition-all">
+                <Button className="bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:shadow-lg hover:shadow-pink-500/30 transition-all">
                   <Plus className="mr-2 h-4 w-4" /> {t("addItem")}
                 </Button>
               </DialogTrigger>
@@ -227,9 +232,11 @@ function InventoryPage() {
                 <DialogHeader><DialogTitle>{editingId ? t("edit") : t("addItem")}</DialogTitle></DialogHeader>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
-                    <Label>{t("itemType")}</Label>
+                    <Label className={theme === "dark" ? "text-slate-300" : ""}>{t("itemType")}</Label>
                     <Select value={form.item_type} onValueChange={(v) => setForm({ ...form, item_type: v as "phone" | "accessory" })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger className={theme === "dark" ? "border-slate-700 bg-slate-800 text-white" : ""}>
+                        <SelectValue />
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="phone">{t("phoneItem")}</SelectItem>
                         <SelectItem value="accessory">{t("accessoryItem")}</SelectItem>
@@ -239,12 +246,28 @@ function InventoryPage() {
 
                   {form.item_type === "phone" ? (
                     <>
-                      <div><Label>{t("brand")}</Label><Input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} /></div>
-                      <div><Label>{t("model")}</Label><Input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} /></div>
                       <div>
-                        <Label>{t("condition")}</Label>
+                        <Label className={theme === "dark" ? "text-slate-300" : ""}>{t("brand")}</Label>
+                        <Input
+                          value={form.brand}
+                          onChange={(e) => setForm({ ...form, brand: e.target.value })}
+                          className={theme === "dark" ? "border-slate-700 bg-slate-800 text-white" : ""}
+                        />
+                      </div>
+                      <div>
+                        <Label className={theme === "dark" ? "text-slate-300" : ""}>{t("model")}</Label>
+                        <Input
+                          value={form.model}
+                          onChange={(e) => setForm({ ...form, model: e.target.value })}
+                          className={theme === "dark" ? "border-slate-700 bg-slate-800 text-white" : ""}
+                        />
+                      </div>
+                      <div>
+                        <Label className={theme === "dark" ? "text-slate-300" : ""}>{t("condition")}</Label>
                         <Select value={form.condition} onValueChange={(v) => setForm({ ...form, condition: v as "new" | "used" })}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectTrigger className={theme === "dark" ? "border-slate-700 bg-slate-800 text-white" : ""}>
+                            <SelectValue />
+                          </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="new">{t("new")}</SelectItem>
                             <SelectItem value="used">{t("used")}</SelectItem>
@@ -254,17 +277,56 @@ function InventoryPage() {
                       <div />
                     </>
                   ) : (
-                    <div className="col-span-2"><Label>{t("name")}</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+                    <div className="col-span-2">
+                      <Label className={theme === "dark" ? "text-slate-300" : ""}>{t("name")}</Label>
+                      <Input
+                        value={form.name}
+                        onChange={(e) => setForm({ ...form, name: e.target.value })}
+                        className={theme === "dark" ? "border-slate-700 bg-slate-800 text-white" : ""}
+                      />
+                    </div>
                   )}
 
-                  <div><Label>{t("buyPrice")}</Label><Input type="number" value={form.buy_price} onChange={(e) => setForm({ ...form, buy_price: e.target.value })} /></div>
-                  <div><Label>{t("sellPrice")}</Label><Input type="number" value={form.sell_price} onChange={(e) => setForm({ ...form, sell_price: e.target.value })} /></div>
-                  <div><Label>{t("stock")}</Label><Input type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
-                  <div><Label>{t("lowStockThreshold")}</Label><Input type="number" value={form.low_stock_threshold} onChange={(e) => setForm({ ...form, low_stock_threshold: e.target.value })} /></div>
+                  <div>
+                    <Label className={theme === "dark" ? "text-slate-300" : ""}>{t("buyPrice")}</Label>
+                    <Input
+                      type="number"
+                      value={form.buy_price}
+                      onChange={(e) => setForm({ ...form, buy_price: e.target.value })}
+                      className={theme === "dark" ? "border-slate-700 bg-slate-800 text-white" : ""}
+                    />
+                  </div>
+                  <div>
+                    <Label className={theme === "dark" ? "text-slate-300" : ""}>{t("sellPrice")}</Label>
+                    <Input
+                      type="number"
+                      value={form.sell_price}
+                      onChange={(e) => setForm({ ...form, sell_price: e.target.value })}
+                      className={theme === "dark" ? "border-slate-700 bg-slate-800 text-white" : ""}
+                    />
+                  </div>
+                  <div>
+                    <Label className={theme === "dark" ? "text-slate-300" : ""}>{t("stock")}</Label>
+                    <Input
+                      type="number"
+                      value={form.quantity}
+                      onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+                      className={theme === "dark" ? "border-slate-700 bg-slate-800 text-white" : ""}
+                    />
+                  </div>
+                  <div>
+                    <Label className={theme === "dark" ? "text-slate-300" : ""}>{t("lowStockThreshold")}</Label>
+                    <Input
+                      type="number"
+                      value={form.low_stock_threshold}
+                      onChange={(e) => setForm({ ...form, low_stock_threshold: e.target.value })}
+                      className={theme === "dark" ? "border-slate-700 bg-slate-800 text-white" : ""}
+                    />
+                  </div>
 
                   {/* Photo upload */}
                   <div className="col-span-2">
-                    <Label>Photo</Label>
+                    <Label className={theme === "dark" ? "text-slate-300" : ""}>Photo</Label>
                     <div className="flex items-center gap-3 mt-1">
                       <input
                         ref={fileInputRef}
@@ -279,6 +341,7 @@ function InventoryPage() {
                         size="sm"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploading}
+                        className={theme === "dark" ? "border-slate-700 text-slate-300 hover:bg-slate-700" : ""}
                       >
                         <Upload className="h-4 w-4 mr-2" />
                         {uploading ? "Uploading..." : "Upload Photo"}
@@ -289,21 +352,24 @@ function InventoryPage() {
                           variant="ghost"
                           size="sm"
                           onClick={removePhoto}
+                          className={theme === "dark" ? "text-slate-400 hover:text-white" : ""}
                         >
                           <X className="h-4 w-4" />
                         </Button>
                       )}
                     </div>
                     {form.photo_url && (
-                      <div className="mt-2 relative w-24 h-24 rounded-md overflow-hidden border">
+                      <div className="mt-2 relative w-24 h-24 rounded-md overflow-hidden border border-slate-200 dark:border-slate-700">
                         <img src={form.photo_url} alt="Item" className="w-full h-full object-cover" />
                       </div>
                     )}
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="ghost" onClick={() => setOpen(false)}>{t("cancel")}</Button>
-                  <Button onClick={() => upsert.mutate()} disabled={upsert.isPending}>
+                  <Button variant="ghost" onClick={() => setOpen(false)} className={theme === "dark" ? "text-slate-300 hover:text-white hover:bg-slate-700" : ""}>
+                    {t("cancel")}
+                  </Button>
+                  <Button onClick={() => upsert.mutate()} disabled={upsert.isPending} className="bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:shadow-lg hover:shadow-pink-500/30">
                     {t("save")}
                   </Button>
                 </DialogFooter>
@@ -314,11 +380,21 @@ function InventoryPage() {
       </div>
 
       {/* Search and table */}
-      <Card className="border-0 bg-white/80 shadow-sm backdrop-blur-sm dark:bg-slate-900/80 p-4">
+      <Card className={cn(
+        "border-0 shadow-sm backdrop-blur-sm p-4",
+        theme === "dark"
+          ? "bg-slate-800/90 border-slate-700"
+          : "bg-white/80"
+      )}>
         <div className="relative mb-4">
-          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
-            className="pl-9 bg-white dark:bg-slate-800"
+            className={cn(
+              "pl-9 focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500",
+              theme === "dark"
+                ? "border-slate-700 bg-slate-900 text-white placeholder-slate-400"
+                : "bg-white border-slate-200"
+            )}
             placeholder={t("search")}
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -328,39 +404,67 @@ function InventoryPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Photo</TableHead>
-                <TableHead>{t("itemType")}</TableHead>
-                <TableHead>{t("name")}/{t("model")}</TableHead>
-                <TableHead className="text-right">{t("buyPrice")}</TableHead>
-                <TableHead className="text-right">{t("sellPrice")}</TableHead>
-                <TableHead className="text-right">{t("stock")}</TableHead>
-                <TableHead />
+                <TableHead className={theme === "dark" ? "text-slate-300" : ""}>Photo</TableHead>
+                <TableHead className={theme === "dark" ? "text-slate-300" : ""}>{t("itemType")}</TableHead>
+                <TableHead className={theme === "dark" ? "text-slate-300" : ""}>{t("name")}/{t("model")}</TableHead>
+                <TableHead className={cn("text-right", theme === "dark" ? "text-slate-300" : "")}>{t("buyPrice")}</TableHead>
+                <TableHead className={cn("text-right", theme === "dark" ? "text-slate-300" : "")}>{t("sellPrice")}</TableHead>
+                <TableHead className={cn("text-right", theme === "dark" ? "text-slate-300" : "")}>{t("stock")}</TableHead>
+                <TableHead className={theme === "dark" ? "text-slate-300" : ""} />
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 && (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">{t("empty")}</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={7} className={cn("text-center py-6", theme === "dark" ? "text-slate-400" : "text-muted-foreground")}>
+                    {t("empty")}
+                  </TableCell>
+                </TableRow>
               )}
               {filtered.map((i) => {
                 const low = i.quantity <= i.low_stock_threshold;
                 return (
-                  <TableRow key={i.id}>
+                  <TableRow key={i.id} className={theme === "dark" ? "hover:bg-slate-700/50" : "hover:bg-muted/50"}>
                     <TableCell>
                       {i.photo_url ? (
                         <img src={i.photo_url} alt="" className="w-10 h-10 rounded object-cover" />
                       ) : (
-                        <div className="w-10 h-10 rounded bg-muted flex items-center justify-center text-xs text-muted-foreground">No</div>
+                        <div className={cn(
+                          "w-10 h-10 rounded flex items-center justify-center text-xs",
+                          theme === "dark" ? "bg-slate-700 text-slate-400" : "bg-muted text-muted-foreground"
+                        )}>
+                          No
+                        </div>
                       )}
                     </TableCell>
-                    <TableCell>{i.item_type === "phone" ? t("phoneItem") : t("accessoryItem")}</TableCell>
-                    <TableCell className="font-medium">{i.item_type === "phone" ? `${i.brand ?? ""} ${i.model ?? ""}`.trim() : i.name}</TableCell>
-                    <TableCell className="text-right">{formatTZS(i.buy_price)}</TableCell>
-                    <TableCell className="text-right">{formatTZS(i.sell_price)}</TableCell>
-                    <TableCell className="text-right">
-                      {low ? <Badge variant="destructive">{i.quantity}</Badge> : <span>{i.quantity}</span>}
+                    <TableCell className={theme === "dark" ? "text-slate-300" : ""}>
+                      {i.item_type === "phone" ? t("phoneItem") : t("accessoryItem")}
+                    </TableCell>
+                    <TableCell className={cn("font-medium", theme === "dark" ? "text-slate-200" : "")}>
+                      {i.item_type === "phone" ? `${i.brand ?? ""} ${i.model ?? ""}`.trim() : i.name}
+                    </TableCell>
+                    <TableCell className={cn("text-right", theme === "dark" ? "text-slate-300" : "")}>
+                      {formatTZS(i.buy_price)}
+                    </TableCell>
+                    <TableCell className={cn("text-right", theme === "dark" ? "text-slate-300" : "")}>
+                      {formatTZS(i.sell_price)}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button size="sm" variant="ghost" onClick={() => openEdit(i)}><Pencil className="h-4 w-4" /></Button>
+                      {low ? (
+                        <Badge variant="destructive">{i.quantity}</Badge>
+                      ) : (
+                        <span className={theme === "dark" ? "text-slate-300" : ""}>{i.quantity}</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => openEdit(i)}
+                        className={theme === "dark" ? "text-slate-300 hover:text-white hover:bg-slate-700" : ""}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 );
