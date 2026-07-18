@@ -155,7 +155,9 @@ function POS() {
       toast.success(t("saleCompleted"));
       const label = selected ? (selected.item_type === "phone" ? `${selected.brand ?? ""} ${selected.model ?? ""}`.trim() : selected.name ?? "") : "";
       const cust = customerId !== "none" ? customers.find((c) => c.id === customerId) : null;
-      generateReceipt({
+      
+      // ✅ Generate receipt with IMEI and open in new tab
+      const pdfData = generateReceipt({
         shopName: t("appName"),
         saleId,
         date: saleDate,
@@ -168,7 +170,13 @@ function POS() {
         customerPhone: cust?.phone ?? newCust.phone ?? null,
         paymentType: paymentType === "cash" ? t("cash") : t("installment"),
         warrantyMonths: Number(warrantyMonths || 0) || null,
+        imei: selected.item_type === "phone" ? imei : null, // ✅ Pass IMEI
       });
+
+      if (pdfData) {
+        window.open(pdfData, "_blank");
+      }
+
       qc.invalidateQueries();
       navigate({ to: "/sales" });
     },
