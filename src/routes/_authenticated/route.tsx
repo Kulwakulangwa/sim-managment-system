@@ -68,14 +68,13 @@ function Layout() {
     ? [
         { to: "/dashboard", label: "platformDashboard", icon: LayoutDashboard },
         { to: "/shops", label: "shops", icon: Building2 },
-        { to: "/audit", label: "auditLog", icon: History },
+        { to: "/audit", label: "auditLog", icon: History },          // ✅ super_admin only
         { to: "/errors", label: "errorMonitoring", icon: ShieldAlert },
         { to: "/help", label: "helpCenter", icon: BookOpen },
       ]
     : [
         { to: "/dashboard", label: "dashboard", icon: LayoutDashboard },
         { to: "/sales", label: "sales", icon: ShoppingCart },
-        // 🔒 Only shop_admin can see Inventory
         { to: "/inventory", label: "inventory", icon: Boxes, roles: ["shop_admin"] },
         { to: "/customers", label: "customers", icon: Users },
         { to: "/repairs", label: "repairs", icon: Wrench, roles: ["shop_admin", "technician"] },
@@ -84,7 +83,7 @@ function Layout() {
         { to: "/expenses", label: "expenses", icon: Receipt, roles: ["shop_admin"] },
         { to: "/reports", label: "reports", icon: BarChart3, roles: ["shop_admin"] },
         { to: "/users", label: "staff", icon: UserCog, roles: ["shop_admin"] },
-        { to: "/audit", label: "auditLog", icon: History, roles: ["shop_admin"] },
+        // ❌ Audit log removed from here – only super_admin can see it
         { to: "/trash", label: "trash", icon: Trash2, roles: ["shop_admin"] },
         { to: "/help", label: "helpCenter", icon: BookOpen },
       ];
