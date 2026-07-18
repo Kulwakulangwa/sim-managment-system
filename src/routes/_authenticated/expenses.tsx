@@ -25,7 +25,9 @@ function ExpensesPage() {
   const qc = useQueryClient();
   const shopId = useShopId();
   const { data: myRole } = useMyRole();
-  const isSuperAdmin = myRole?.isSuperAdmin || false; // only super_admin can delete
+  const role = myRole?.role;
+  // Both shop_admin and super_admin can delete
+  const isAdmin = role === "shop_admin" || role === "super_admin";
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<{ category: Cat; amount: string; note: string; expense_date: string }>({
@@ -52,10 +54,10 @@ function ExpensesPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  // Delete mutation – only allowed for super_admin
+  // Delete mutation – allowed for shop_admin and super_admin
   const del = useMutation({
     mutationFn: async (id: string) => {
-      if (!isSuperAdmin) throw new Error("Only super admin can delete expenses");
+      if (!isAdmin) throw new Error("Only admins can delete expenses");
       const { error } = await supabase.from("expenses").delete().eq("id", id);
       if (error) throw error;
     },
@@ -105,17 +107,17 @@ function ExpensesPage() {
         <Table>
           <TableHeader><TableRow>
             <TableHead>{t("date")}</TableHead><TableHead>{t("category")}</TableHead><TableHead className="text-right">{t("amount")}</TableHead><TableHead>{t("note")}</TableHead>
-            {isSuperAdmin && <TableHead className="text-right">{t("actions")}</TableHead>}
+            {isAdmin && <TableHead className="text-right">{t("actions")}</TableHead>}
           </TableRow></TableHeader>
           <TableBody>
-            {rows.length === 0 && <TableRow><TableCell colSpan={isSuperAdmin ? 5 : 4} className="text-center py-6 text-muted-foreground">{t("empty")}</TableCell></TableRow>}
+            {rows.length === 0 && <TableRow><TableCell colSpan={isAdmin ? 5 : 4} className="text-center py-6 text-muted-foreground">{t("empty")}</TableCell></TableRow>}
             {rows.map((r) => (
               <TableRow key={r.id}>
                 <TableCell className="text-xs">{formatDate(r.expense_date)}</TableCell>
                 <TableCell>{catLabel(r.category as Cat)}</TableCell>
                 <TableCell className="text-right font-semibold">{formatTZS(r.amount)}</TableCell>
                 <TableCell className="text-muted-foreground">{r.note ?? "—"}</TableCell>
-                {isSuperAdmin && (
+                {isAdmin && (
                   <TableCell className="text-right">
                     <Button variant="ghost" size="sm" onClick={() => handleDelete(r.id)} disabled={del.isPending}>
                       <Trash2 className="h-4 w-4 text-red-500" />
