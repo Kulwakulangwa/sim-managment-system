@@ -10,22 +10,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, Minus, ShoppingCart, Check, X } from "lucide-react";
+import { Search, Plus, Minus, ShoppingCart, Check } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { generateReceipt } from "@/lib/receipt";
+import { useTheme } from "@/lib/theme";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/sales/pos")({ component: POS });
 
 // ─── Theme tokens ────────────────────────────────────────────
-const GRADIENT_BG = "bg-gradient-to-br from-[#1F0A28] to-[#3A1442]";
-const BUTTON_GRADIENT = "bg-gradient-to-r from-[#C45BA0] to-[#8B3A8F] hover:shadow-lg hover:shadow-[#C45BA0]/30 transition-all duration-200";
+const BUTTON_GRADIENT = "bg-gradient-to-r from-pink-500 to-rose-500 hover:shadow-lg hover:shadow-pink-500/30 transition-all duration-200";
 
 function POS() {
   const { t } = useI18n();
   const qc = useQueryClient();
   const shopId = useShopId();
   const navigate = useNavigate();
+  const { theme } = useTheme();
   const [q, setQ] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [qty, setQty] = useState(1);
@@ -175,10 +177,16 @@ function POS() {
 
   // ─── Render ──────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
+    <div className={cn(
+      "space-y-6 -m-4 sm:-m-6 p-4 sm:p-6 min-h-full rounded-3xl",
+      theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
+    )}>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-          <ShoppingCart className="h-6 w-6 text-[#C45BA0]" />
+        <h1 className={cn(
+          "text-2xl font-bold flex items-center gap-2",
+          theme === "dark" ? "text-white" : "text-slate-800"
+        )}>
+          <ShoppingCart className="h-6 w-6 text-pink-500" />
           {t("pos")}
         </h1>
         <div className="flex items-center gap-2">
@@ -186,7 +194,10 @@ function POS() {
             variant="outline"
             size="sm"
             onClick={() => navigate({ to: "/sales" })}
-            className="border-slate-200 text-slate-600 hover:bg-slate-50"
+            className={cn(
+              "border-slate-200 hover:bg-slate-50",
+              theme === "dark" && "border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
+            )}
           >
             View Sales
           </Button>
@@ -195,23 +206,41 @@ function POS() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left – Item selection */}
-        <Card className="lg:col-span-2 border-0 shadow-md bg-white/90 backdrop-blur-sm">
-          <CardHeader className="pb-3 border-b border-slate-100">
-            <CardTitle className="text-slate-700">{t("selectItem")}</CardTitle>
+        <Card className={cn(
+          "lg:col-span-2 border-0 shadow-md backdrop-blur-sm",
+          theme === "dark" ? "bg-slate-800/90" : "bg-white/90"
+        )}>
+          <CardHeader className={cn(
+            "pb-3 border-b",
+            theme === "dark" ? "border-slate-700" : "border-slate-100"
+          )}>
+            <CardTitle className={theme === "dark" ? "text-slate-200" : "text-slate-700"}>
+              {t("selectItem")}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 pt-4">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
-                className="pl-9 border-slate-200 focus:ring-2 focus:ring-[#C45BA0]/50 focus:border-[#C45BA0]"
+                className={cn(
+                  "pl-9 focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500",
+                  theme === "dark"
+                    ? "border-slate-700 bg-slate-900 text-white placeholder-slate-400"
+                    : "border-slate-200"
+                )}
                 placeholder="Search by brand, model, or name"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
               />
             </div>
-            <div className="max-h-[420px] overflow-y-auto divide-y divide-slate-100 scrollbar-thin scrollbar-thumb-slate-300">
+            <div className="max-h-[420px] overflow-y-auto divide-y scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600">
               {filtered.length === 0 && (
-                <p className="p-6 text-sm text-slate-400 text-center">{t("empty")}</p>
+                <p className={cn(
+                  "p-6 text-sm text-center",
+                  theme === "dark" ? "text-slate-400" : "text-slate-400"
+                )}>
+                  {t("empty")}
+                </p>
               )}
               {filtered.map((i) => {
                 const active = selectedId === i.id;
@@ -220,23 +249,37 @@ function POS() {
                   <button
                     key={i.id}
                     onClick={() => handleSelectItem(i.id)}
-                    className={`w-full text-left p-3 flex items-center gap-3 transition-all duration-200 ${
+                    className={cn(
+                      "w-full text-left p-3 flex items-center gap-3 transition-all duration-200",
                       active
-                        ? "bg-gradient-to-r from-[#C45BA0]/10 to-[#8B3A8F]/5 border-l-4 border-[#C45BA0]"
-                        : "hover:bg-slate-50"
-                    }`}
+                        ? "bg-gradient-to-r from-pink-500/20 to-rose-500/10 border-l-4 border-pink-500"
+                        : theme === "dark"
+                          ? "hover:bg-slate-700/50"
+                          : "hover:bg-slate-50",
+                      theme === "dark" ? "border-slate-700" : "border-slate-100"
+                    )}
                   >
                     {i.photo_url && (
                       <img src={i.photo_url} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0 shadow-sm" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-slate-800">{label}</p>
+                      <p className={cn(
+                        "font-medium",
+                        theme === "dark" ? "text-slate-200" : "text-slate-800"
+                      )}>
+                        {label}
+                      </p>
                       <div className="flex items-center gap-2 text-xs text-slate-500">
                         <span>Stock: {i.quantity}</span>
                         {i.condition && <span>· {i.condition}</span>}
                       </div>
                     </div>
-                    <p className="font-semibold text-slate-700">{formatTZS(i.sell_price)}</p>
+                    <p className={cn(
+                      "font-semibold",
+                      theme === "dark" ? "text-slate-200" : "text-slate-700"
+                    )}>
+                      {formatTZS(i.sell_price)}
+                    </p>
                   </button>
                 );
               })}
@@ -245,25 +288,46 @@ function POS() {
         </Card>
 
         {/* Right – Sale form */}
-        <Card className="border-0 shadow-md bg-white/90 backdrop-blur-sm">
-          <CardHeader className="pb-3 border-b border-slate-100">
-            <CardTitle className="text-slate-700">{t("newSale")}</CardTitle>
+        <Card className={cn(
+          "border-0 shadow-md backdrop-blur-sm",
+          theme === "dark" ? "bg-slate-800/90" : "bg-white/90"
+        )}>
+          <CardHeader className={cn(
+            "pb-3 border-b",
+            theme === "dark" ? "border-slate-700" : "border-slate-100"
+          )}>
+            <CardTitle className={theme === "dark" ? "text-slate-200" : "text-slate-700"}>
+              {t("newSale")}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 pt-4">
             {selected ? (
               <>
                 {/* Selected item preview */}
-                <div className="rounded-xl bg-gradient-to-br from-slate-50 to-white p-4 border border-slate-200 flex items-center gap-4">
+                <div className={cn(
+                  "rounded-xl p-4 border flex items-center gap-4",
+                  theme === "dark"
+                    ? "bg-slate-700/50 border-slate-700"
+                    : "bg-gradient-to-br from-slate-50 to-white border-slate-200"
+                )}>
                   {selected.photo_url && (
                     <img src={selected.photo_url} alt="" className="w-16 h-16 rounded-xl object-cover flex-shrink-0 shadow-md" />
                   )}
                   <div className="min-w-0">
-                    <p className="font-semibold text-slate-800">
+                    <p className={cn(
+                      "font-semibold",
+                      theme === "dark" ? "text-slate-200" : "text-slate-800"
+                    )}>
                       {selected.item_type === "phone" ? `${selected.brand ?? ""} ${selected.model ?? ""}` : selected.name}
                     </p>
-                    <p className="text-sm text-slate-500">{formatTZS(unit)} · Stock: {selected.quantity}</p>
+                    <p className="text-sm text-slate-500">
+                      {formatTZS(unit)} · Stock: {selected.quantity}
+                    </p>
                     {selected.condition && (
-                      <span className="inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">
+                      <span className={cn(
+                        "inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full",
+                        theme === "dark" ? "bg-slate-600 text-slate-300" : "bg-slate-200 text-slate-600"
+                      )}>
                         {selected.condition}
                       </span>
                     )}
@@ -273,16 +337,23 @@ function POS() {
                 {/* IMEI – only for phones */}
                 {selected.item_type === "phone" && (
                   <div>
-                    <Label className="text-sm font-medium text-slate-700 flex items-center gap-1">
+                    <Label className={cn(
+                      "text-sm font-medium flex items-center gap-1",
+                      theme === "dark" ? "text-slate-300" : "text-slate-700"
+                    )}>
                       IMEI <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       value={imei}
                       onChange={(e) => setImei(e.target.value)}
                       placeholder="Enter IMEI number"
-                      className={`mt-1 border-slate-200 focus:ring-2 focus:ring-[#C45BA0]/50 focus:border-[#C45BA0] ${
-                        !imei.trim() ? "border-red-300" : "border-slate-200"
-                      }`}
+                      className={cn(
+                        "mt-1 focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500",
+                        theme === "dark"
+                          ? "border-slate-700 bg-slate-900 text-white placeholder-slate-400"
+                          : "border-slate-200",
+                        !imei.trim() && "border-red-300"
+                      )}
                     />
                     {!imei.trim() && (
                       <p className="text-xs text-red-500 mt-1">IMEI is required for phone sales</p>
@@ -292,13 +363,21 @@ function POS() {
 
                 {/* Quantity */}
                 <div>
-                  <Label className="text-sm font-medium text-slate-700">{t("quantity")}</Label>
+                  <Label className={cn(
+                    "text-sm font-medium",
+                    theme === "dark" ? "text-slate-300" : "text-slate-700"
+                  )}>
+                    {t("quantity")}
+                  </Label>
                   <div className="flex items-center gap-2 mt-1">
                     <Button
                       size="icon"
                       variant="outline"
                       onClick={() => setQty((n) => Math.max(1, n - 1))}
-                      className="border-slate-200 hover:bg-slate-100"
+                      className={cn(
+                        "border-slate-200 hover:bg-slate-100",
+                        theme === "dark" && "border-slate-700 hover:bg-slate-700 hover:text-white"
+                      )}
                     >
                       <Minus className="h-4 w-4" />
                     </Button>
@@ -306,13 +385,21 @@ function POS() {
                       type="number"
                       value={qty}
                       onChange={(e) => setQty(Math.max(1, Number(e.target.value)))}
-                      className="text-center w-20 border-slate-200 focus:ring-2 focus:ring-[#C45BA0]/50 focus:border-[#C45BA0]"
+                      className={cn(
+                        "text-center w-20 focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500",
+                        theme === "dark"
+                          ? "border-slate-700 bg-slate-900 text-white"
+                          : "border-slate-200"
+                      )}
                     />
                     <Button
                       size="icon"
                       variant="outline"
                       onClick={() => setQty((n) => Math.min(selected.quantity, n + 1))}
-                      className="border-slate-200 hover:bg-slate-100"
+                      className={cn(
+                        "border-slate-200 hover:bg-slate-100",
+                        theme === "dark" && "border-slate-700 hover:bg-slate-700 hover:text-white"
+                      )}
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
@@ -321,22 +408,40 @@ function POS() {
 
                 {/* Discount */}
                 <div>
-                  <Label className="text-sm font-medium text-slate-700">{t("discount")}</Label>
+                  <Label className={cn(
+                    "text-sm font-medium",
+                    theme === "dark" ? "text-slate-300" : "text-slate-700"
+                  )}>
+                    {t("discount")}
+                  </Label>
                   <Input
                     type="number"
                     value={discount}
                     onChange={(e) => setDiscount(e.target.value)}
-                    className="mt-1 border-slate-200 focus:ring-2 focus:ring-[#C45BA0]/50 focus:border-[#C45BA0]"
+                    className={cn(
+                      "mt-1 focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500",
+                      theme === "dark"
+                        ? "border-slate-700 bg-slate-900 text-white"
+                        : "border-slate-200"
+                    )}
                   />
                 </div>
 
                 {/* Customer */}
                 <div>
-                  <Label className="text-sm font-medium text-slate-700">
+                  <Label className={cn(
+                    "text-sm font-medium",
+                    theme === "dark" ? "text-slate-300" : "text-slate-700"
+                  )}>
                     {t("customer")} <span className="text-slate-400 text-xs">({t("optional")})</span>
                   </Label>
                   <Select value={customerId} onValueChange={setCustomerId}>
-                    <SelectTrigger className="mt-1 border-slate-200 focus:ring-2 focus:ring-[#C45BA0]/50 focus:border-[#C45BA0]">
+                    <SelectTrigger className={cn(
+                      "mt-1 focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500",
+                      theme === "dark"
+                        ? "border-slate-700 bg-slate-900 text-white"
+                        : "border-slate-200"
+                    )}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -354,13 +459,23 @@ function POS() {
                         placeholder={t("fullName")}
                         value={newCust.name}
                         onChange={(e) => setNewCust({ ...newCust, name: e.target.value })}
-                        className="border-slate-200 focus:ring-2 focus:ring-[#C45BA0]/50 focus:border-[#C45BA0]"
+                        className={cn(
+                          "focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500",
+                          theme === "dark"
+                            ? "border-slate-700 bg-slate-900 text-white placeholder-slate-400"
+                            : "border-slate-200"
+                        )}
                       />
                       <Input
                         placeholder={t("phone")}
                         value={newCust.phone}
                         onChange={(e) => setNewCust({ ...newCust, phone: e.target.value })}
-                        className="border-slate-200 focus:ring-2 focus:ring-[#C45BA0]/50 focus:border-[#C45BA0]"
+                        className={cn(
+                          "focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500",
+                          theme === "dark"
+                            ? "border-slate-700 bg-slate-900 text-white placeholder-slate-400"
+                            : "border-slate-200"
+                        )}
                       />
                     </div>
                   )}
@@ -368,9 +483,19 @@ function POS() {
 
                 {/* Payment Type */}
                 <div>
-                  <Label className="text-sm font-medium text-slate-700">{t("paymentType")}</Label>
+                  <Label className={cn(
+                    "text-sm font-medium",
+                    theme === "dark" ? "text-slate-300" : "text-slate-700"
+                  )}>
+                    {t("paymentType")}
+                  </Label>
                   <Select value={paymentType} onValueChange={(v) => setPaymentType(v as "cash" | "installment")}>
-                    <SelectTrigger className="mt-1 border-slate-200 focus:ring-2 focus:ring-[#C45BA0]/50 focus:border-[#C45BA0]">
+                    <SelectTrigger className={cn(
+                      "mt-1 focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500",
+                      theme === "dark"
+                        ? "border-slate-700 bg-slate-900 text-white"
+                        : "border-slate-200"
+                    )}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -382,23 +507,48 @@ function POS() {
 
                 {/* Installment options */}
                 {paymentType === "installment" && (
-                  <div className="space-y-2 p-3 rounded-lg bg-slate-50 border border-slate-200">
+                  <div className={cn(
+                    "space-y-2 p-3 rounded-lg border",
+                    theme === "dark"
+                      ? "bg-slate-700/30 border-slate-700"
+                      : "bg-slate-50 border-slate-200"
+                  )}>
                     <div>
-                      <Label className="text-sm font-medium text-slate-700">{t("installmentMonths")}</Label>
+                      <Label className={cn(
+                        "text-sm font-medium",
+                        theme === "dark" ? "text-slate-300" : "text-slate-700"
+                      )}>
+                        {t("installmentMonths")}
+                      </Label>
                       <Input
                         type="number"
                         value={installmentMonths}
                         onChange={(e) => setInstallmentMonths(e.target.value)}
-                        className="mt-1 border-slate-200 focus:ring-2 focus:ring-[#C45BA0]/50 focus:border-[#C45BA0]"
+                        className={cn(
+                          "mt-1 focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500",
+                          theme === "dark"
+                            ? "border-slate-700 bg-slate-900 text-white"
+                            : "border-slate-200"
+                        )}
                       />
                     </div>
                     <div>
-                      <Label className="text-sm font-medium text-slate-700">{t("downPayment")}</Label>
+                      <Label className={cn(
+                        "text-sm font-medium",
+                        theme === "dark" ? "text-slate-300" : "text-slate-700"
+                      )}>
+                        {t("downPayment")}
+                      </Label>
                       <Input
                         type="number"
                         value={downPayment}
                         onChange={(e) => setDownPayment(e.target.value)}
-                        className="mt-1 border-slate-200 focus:ring-2 focus:ring-[#C45BA0]/50 focus:border-[#C45BA0]"
+                        className={cn(
+                          "mt-1 focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500",
+                          theme === "dark"
+                            ? "border-slate-700 bg-slate-900 text-white"
+                            : "border-slate-200"
+                        )}
                       />
                     </div>
                   </div>
@@ -407,27 +557,49 @@ function POS() {
                 {/* Warranty – only for phones */}
                 {selected.item_type === "phone" && (
                   <div>
-                    <Label className="text-sm font-medium text-slate-700">{t("warrantyMonths")}</Label>
+                    <Label className={cn(
+                      "text-sm font-medium",
+                      theme === "dark" ? "text-slate-300" : "text-slate-700"
+                    )}>
+                      {t("warrantyMonths")}
+                    </Label>
                     <Input
                       type="number"
                       value={warrantyMonths}
                       onChange={(e) => setWarrantyMonths(e.target.value)}
-                      className="mt-1 border-slate-200 focus:ring-2 focus:ring-[#C45BA0]/50 focus:border-[#C45BA0]"
+                      className={cn(
+                        "mt-1 focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500",
+                        theme === "dark"
+                          ? "border-slate-700 bg-slate-900 text-white"
+                          : "border-slate-200"
+                      )}
                     />
                   </div>
                 )}
 
                 {/* Totals */}
-                <div className="space-y-1 border-t border-slate-200 pt-3 text-sm">
-                  <div className="flex justify-between text-slate-600">
+                <div className={cn(
+                  "space-y-1 border-t pt-3 text-sm",
+                  theme === "dark" ? "border-slate-700" : "border-slate-200"
+                )}>
+                  <div className={cn(
+                    "flex justify-between",
+                    theme === "dark" ? "text-slate-400" : "text-slate-600"
+                  )}>
                     <span>{t("subtotal")}</span>
                     <span>{formatTZS(subtotal)}</span>
                   </div>
-                  <div className="flex justify-between text-slate-600">
+                  <div className={cn(
+                    "flex justify-between",
+                    theme === "dark" ? "text-slate-400" : "text-slate-600"
+                  )}>
                     <span>{t("discount")}</span>
                     <span>-{formatTZS(Number(discount || 0))}</span>
                   </div>
-                  <div className="flex justify-between text-base font-bold text-slate-800 pt-1 border-t border-slate-200">
+                  <div className={cn(
+                    "flex justify-between text-base font-bold pt-1 border-t",
+                    theme === "dark" ? "border-slate-700 text-white" : "border-slate-200 text-slate-800"
+                  )}>
                     <span>{t("grandTotal")}</span>
                     <span>{formatTZS(total)}</span>
                   </div>
@@ -454,8 +626,13 @@ function POS() {
               </>
             ) : (
               <div className="py-12 text-center">
-                <ShoppingCart className="h-12 w-12 mx-auto text-slate-300 mb-3" />
-                <p className="text-slate-500">{t("selectItem")}</p>
+                <ShoppingCart className={cn(
+                  "h-12 w-12 mx-auto mb-3",
+                  theme === "dark" ? "text-slate-600" : "text-slate-300"
+                )} />
+                <p className={theme === "dark" ? "text-slate-400" : "text-slate-500"}>
+                  {t("selectItem")}
+                </p>
               </div>
             )}
           </CardContent>
