@@ -17,12 +17,19 @@ export const Route = createFileRoute("/_authenticated/sales/")({ component: Sale
 function SalesPage() {
   const { t } = useI18n();
   const { theme } = useTheme();
+
+  // 🔍 Fetch sales including IMEI
   const { data: sales = [] } = useQuery({
     queryKey: ["sales-list"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("sales")
-        .select("*, inventory_items(brand, model, name, item_type), customers(full_name, phone), profiles(full_name)")
+        .select(`
+          *,
+          inventory_items(brand, model, name, item_type),
+          customers(full_name, phone),
+          profiles(full_name)
+        `)
         .order("sale_date", { ascending: false })
         .limit(200);
       if (error) throw error;
@@ -43,6 +50,34 @@ function SalesPage() {
     { label: t("totalProfit"), value: formatTZS(totalProfit), icon: DollarSign },
     { label: t("itemsSold"), value: String(totalItems), icon: ShoppingCart },
   ];
+
+  // 🧾 Handle receipt generation – opens in new tab
+  const handleReceipt = (sale: any) => {
+    const it = sale.inventory_items;
+    const label = it ? (it.item_type === "phone" ? `${it.brand ?? ""} ${it.model ?? ""}`.trim() : (it.name ?? "")) : "—";
+    const total = (Number(sale.sell_price) - Number(sale.discount)) * Number(sale.quantity);
+
+    const pdfData = generateReceipt({
+      shopName: t("appName"),
+      saleId: sale.id,
+      date: sale.sale_date,
+      itemLabel: label,
+      quantity: sale.quantity,
+      unitPrice: Number(sale.sell_price),
+      discount: Number(sale.discount),
+      total,
+      customerName: sale.customers?.full_name,
+      customerPhone: sale.customers?.phone,
+      cashier: sale.profiles?.full_name,
+      paymentType: sale.payment_type === "cash" ? t("cash") : t("installment"),
+      warrantyMonths: null, // not stored in sale, can be fetched from warranties table if needed
+      imei: sale.imei || null, // ✅ Pass IMEI
+    });
+
+    if (pdfData) {
+      window.open(pdfData, "_blank");
+    }
+  };
 
   return (
     <div className={cn(
@@ -89,6 +124,7 @@ function SalesPage() {
               <TableRow>
                 <TableHead className="dark:text-slate-300">{t("date")}</TableHead>
                 <TableHead className="dark:text-slate-300">Item</TableHead>
+                <TableHead className="dark:text-slate-300">IMEI</TableHead> {/* ✅ New column */}
                 <TableHead className="dark:text-slate-300">{t("customer")}</TableHead>
                 <TableHead className="dark:text-slate-300">{t("paymentType")}</TableHead>
                 <TableHead className="text-right dark:text-slate-300">{t("quantity")}</TableHead>
@@ -100,7 +136,7 @@ function SalesPage() {
             <TableBody>
               {sales.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground dark:text-slate-400 py-6">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground dark:text-slate-400 py-6">
                     {t("empty")}
                   </TableCell>
                 </TableRow>
@@ -113,6 +149,9 @@ function SalesPage() {
                   <TableRow key={s.id} className="hover:bg-muted/50 transition dark:hover:bg-slate-700/50">
                     <TableCell className="text-xs dark:text-slate-300">{formatDate(s.sale_date)}</TableCell>
                     <TableCell className="font-medium dark:text-white">{label}</TableCell>
+                    <TableCell className="font-mono text-xs dark:text-slate-300">
+                      {s.imei || "—"}
+                    </TableCell>
                     <TableCell className="dark:text-slate-300">{s.customers?.full_name ?? "—"}</TableCell>
                     <TableCell>
                       <Badge variant={s.payment_type === "cash" ? "secondary" : "outline"} className="dark:bg-slate-700 dark:text-slate-200 dark:border-slate-600">
@@ -126,20 +165,7 @@ function SalesPage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => generateReceipt({
-                          shopName: t("appName"),
-                          saleId: s.id,
-                          date: s.sale_date,
-                          itemLabel: label,
-                          quantity: s.quantity,
-                          unitPrice: Number(s.sell_price),
-                          discount: Number(s.discount),
-                          total,
-                          customerName: s.customers?.full_name,
-                          customerPhone: s.customers?.phone,
-                          cashier: s.profiles?.full_name,
-                          paymentType: s.payment_type === "cash" ? t("cash") : t("installment"),
-                        })}
+                        onClick={() => handleReceipt(s)}
                         className="dark:text-slate-300 dark:hover:text-white"
                       >
                         <Download className="h-4 w-4" />
