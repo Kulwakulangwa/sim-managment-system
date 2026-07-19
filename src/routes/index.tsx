@@ -48,10 +48,11 @@ function HomePage() {
       // Super admin bypass
       if (roleData?.role === "super_admin") {
         console.log("[Login] Super admin – skipping expiry check");
-      } else {
-        // For everyone else, check expiry
+      } 
+      // Only check expiry for shop_admin
+      else if (roleData?.role === "shop_admin") {
         const expired = !roleData?.expires_at || new Date(roleData.expires_at) < new Date();
-        console.log("[Login] Expired?", expired, "expires_at:", roleData?.expires_at);
+        console.log("[Login] Shop admin – expired?", expired, "expires_at:", roleData?.expires_at);
         if (expired) {
           await supabase.auth.signOut();
           setError("Your account has expired. Please contact your administrator.");
@@ -59,6 +60,7 @@ function HomePage() {
           return;
         }
       }
+      // For other roles (cashier, salesperson, technician) – allow login without expiry check
     }
 
     navigate({ to: '/dashboard' });
