@@ -1,4 +1,3 @@
-// src/routes/_authenticated/shops.tsx
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -15,7 +14,16 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Plus, Pause, Play, Trash2, UserPlus, KeyRound, CalendarClock, Ban, CheckCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { createShop, updateShop, deleteShop, createShopAdmin, resetShopAdminPassword, extendShopAdminExpiration } from "@/lib/admin.functions";
+import {
+  createShop,
+  updateShop,
+  deleteShop,
+  createShopAdmin,
+  resetShopAdminPassword,
+  extendShopAdminExpiration,
+  suspendShopAdmin,
+  activateShopAdmin,
+} from "@/lib/admin.functions";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
@@ -71,6 +79,8 @@ function ShopsPage() {
   const createAdminFn = useServerFn(createShopAdmin);
   const resetPasswordFn = useServerFn(resetShopAdminPassword);
   const extendExpiryFn = useServerFn(extendShopAdminExpiration);
+  const suspendAdminFn = useServerFn(suspendShopAdmin);
+  const activateAdminFn = useServerFn(activateShopAdmin);
 
   const [openShop, setOpenShop] = useState(false);
   const [shopForm, setShopForm] = useState({ name: "", phone: "", address: "", region: "" });
@@ -136,17 +146,10 @@ function ShopsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  // Suspend admin: set expires_at to past
+  // Suspend admin using server function
   const suspendAdmin = useMutation({
     mutationFn: async (userId: string) => {
-      const past = new Date();
-      past.setDate(past.getDate() - 1);
-      const { error } = await supabase
-        .from("user_roles")
-        .update({ expires_at: past.toISOString() })
-        .eq("user_id", userId)
-        .eq("role", "shop_admin");
-      if (error) throw error;
+      await suspendAdminFn({ data: { user_id: userId } });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["shop-admins"] });
@@ -155,17 +158,10 @@ function ShopsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  // Activate admin: set expires_at to 1 year from now
+  // Activate admin using server function
   const activateAdmin = useMutation({
     mutationFn: async (userId: string) => {
-      const future = new Date();
-      future.setFullYear(future.getFullYear() + 1);
-      const { error } = await supabase
-        .from("user_roles")
-        .update({ expires_at: future.toISOString() })
-        .eq("user_id", userId)
-        .eq("role", "shop_admin");
-      if (error) throw error;
+      await activateAdminFn({ data: { user_id: userId } });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["shop-admins"] });
