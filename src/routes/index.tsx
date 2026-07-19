@@ -34,6 +34,27 @@ function HomePage() {
       return;
     }
 
+    // ✅ Check if the user's account has expired
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("expires_at, role")
+        .eq("user_id", user.id)
+        .single();
+
+      if (roleData?.expires_at) {
+        const expired = new Date(roleData.expires_at) < new Date();
+        if (expired && roleData.role !== "super_admin") {
+          // Sign out and show error
+          await supabase.auth.signOut();
+          setError("Your account has expired. Please contact your administrator.");
+          setLoading(false);
+          return;
+        }
+      }
+    }
+
     navigate({ to: '/dashboard' });
   };
 
@@ -46,7 +67,7 @@ function HomePage() {
       "flex min-h-screen flex-col md:flex-row",
       theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
     )}>
-      {/* LEFT PANEL – Background image + brand */}
+      {/* LEFT PANEL – same as before */}
       <div className="relative hidden flex-1 flex-col items-center justify-between text-white md:flex lg:flex-[1.15]">
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -160,7 +181,6 @@ function HomePage() {
             Forgot password?
           </a>
 
-          {/* ─── Legal footer ─── */}
           <div className="mt-6 text-center text-xs text-muted-foreground dark:text-slate-500">
             <Link to="/legal/terms" className="hover:underline">Terms</Link>
             {' · '}
