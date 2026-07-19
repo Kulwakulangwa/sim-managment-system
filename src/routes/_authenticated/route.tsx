@@ -35,70 +35,60 @@ export const Route = createFileRoute("/_authenticated")({
     const { data } = await supabase.auth.getUser();
     if (!data.user) throw redirect({ to: "/auth" });
 
-    const userId = data.user.id;
-
-    // ─── Fetch user's role and shop_id ──────────────────────────
+    // ─── Get user role, shop_id, expiry ──────────────────────
     const { data: userRole, error: roleError } = await supabase
       .from("user_roles")
-      .select("role, shop_id")
-      .eq("user_id", userId)
+      .select("role, shop_id, expires_at")
+      .eq("user_id", data.user.id)
       .single();
 
     console.log("[RouteGuard] userRole:", userRole);
     console.log("[RouteGuard] roleError:", roleError);
 
-    // Super admin bypass
+    // Super admin always allowed
     if (userRole?.role === "super_admin") {
-      console.log("[RouteGuard] Super admin – skipping expiry check");
-      return { userId };
+      console.log("[RouteGuard] Super admin – skipping checks");
+      return { userId: data.user.id };
     }
 
-    // Shop admin: check own expiry
+    // ─── Shop admin: check own expiry ────────────────────────
     if (userRole?.role === "shop_admin") {
-      const { data: shopAdminData } = await supabase
-        .from("user_roles")
-        .select("expires_at")
-        .eq("user_id", userId)
-        .single();
-
-      const expired = !shopAdminData?.expires_at || new Date(shopAdminData.expires_at) < new Date();
+      const expired = !userRole?.expires_at || new Date(userRole.expires_at) < new Date();
       console.log("[RouteGuard] Shop admin – expired?", expired);
       if (expired) {
         await supabase.auth.signOut();
         throw redirect({ to: "/auth" });
       }
-      return { userId };
+      return { userId: data.user.id };
     }
 
-    // Staff (cashier, salesperson, technician): check shop admin expiry
+    // ─── Staff: check their shop_admin status ────────────────
     if (userRole?.shop_id) {
-      const { data: shopAdmin } = await supabase
+      const { data: shopAdmin, error: saError } = await supabase
         .from("user_roles")
         .select("expires_at")
         .eq("shop_id", userRole.shop_id)
         .eq("role", "shop_admin")
-        .maybeSingle();
+        .single();
 
-      console.log("[RouteGuard] Staff – shop admin data:", shopAdmin);
-
+      console.log("[RouteGuard] Shop admin for staff:", shopAdmin, saError);
       const shopAdminExpired = !shopAdmin?.expires_at || new Date(shopAdmin.expires_at) < new Date();
       if (shopAdminExpired) {
-        console.log("[RouteGuard] Shop admin expired – blocking staff");
+        console.log("[RouteGuard] Staff blocked – shop admin expired/suspended");
         await supabase.auth.signOut();
         throw redirect({ to: "/auth" });
       }
-      console.log("[RouteGuard] Staff – shop admin active, allowing access");
-      return { userId };
     }
 
-    return { userId };
+    return { userId: data.user.id };
   },
   component: Layout,
 });
 
+// ─── The rest of the Layout component stays exactly as before ───
 type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }>; roles?: AppRole[] };
 
 function Layout() {
-  // ─── Your existing Layout code remains exactly the same ──────
-  // (No changes needed here – keep your current version)
+  // ... (unchanged) ...
+  // Keep your existing Layout implementation.
 }
