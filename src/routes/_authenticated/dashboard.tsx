@@ -16,9 +16,11 @@ import {
   Plus,
   Package,
   Receipt,
+  CalendarClock,
 } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
+import { Card } from "@/components/ui/card";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -138,6 +140,23 @@ function Dashboard() {
   const { theme } = useTheme();
   const isSuper = myRole?.isSuperAdmin ?? false;
 
+  // ── Fetch current user's expiry for self-view ──
+  const { data: userRole } = useQuery({
+    queryKey: ["user-role-expiry"],
+    enabled: !isSuper, // only for non-super admins
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("expires_at, role")
+        .eq("user_id", user.id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: stats } = useQuery({
     queryKey: ["dashboard-stats"],
     enabled: !isSuper,
@@ -188,6 +207,38 @@ function Dashboard() {
     { label: t("debtors"), value: formatTZS(stats?.debtors ?? 0), icon: CreditCard, badge: "wine" },
   ];
 
+  // ── Expiry self-view ──
+  const expiryCard = userRole ? (
+    <Card className="border-0 bg-white/80 shadow-sm backdrop-blur-sm dark:bg-slate-800/90 p-4 col-span-full">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-3">
+          <div className="rounded-full bg-gradient-to-br from-pink-500/20 to-rose-500/10 p-2 ring-1 ring-pink-500/20">
+            <CalendarClock className="h-5 w-5 text-pink-500" />
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground dark:text-slate-400">Account Expiry</p>
+            <p className="text-lg font-semibold text-slate-800 dark:text-white">
+              {userRole.expires_at ? (
+                new Date(userRole.expires_at) < new Date() ? (
+                  <span className="text-red-500">Expired</span>
+                ) : (
+                  new Date(userRole.expires_at).toLocaleDateString()
+                )
+              ) : (
+                "Never"
+              )}
+            </p>
+          </div>
+        </div>
+        {userRole.expires_at && new Date(userRole.expires_at) > new Date() && (
+          <div className="text-sm text-muted-foreground dark:text-slate-400">
+            {Math.ceil((new Date(userRole.expires_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days remaining
+          </div>
+        )}
+      </div>
+    </Card>
+  ) : null;
+
   return (
     <div className={cn(
       "space-y-6 -m-4 sm:-m-6 p-4 sm:p-6 min-h-full rounded-3xl",
@@ -197,6 +248,9 @@ function Dashboard() {
         <h1 className="text-2xl font-bold text-slate-800 dark:text-white">{t("dashboard")}</h1>
         <p className="text-sm text-slate-400 dark:text-slate-400">{t("tagline")}</p>
       </div>
+
+      {/* Expiry card */}
+      {expiryCard}
 
       <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
         {cards.map((c) => (
