@@ -34,18 +34,17 @@ function SubscriptionsPage() {
       const { data: shops } = await supabase.from("shops").select("*");
       if (!shops) return [];
 
-      // For each shop, find the shop_admin and calculate revenue
       const results = await Promise.all(
         shops.map(async (shop) => {
-          // Get shop admin
+          // Get shop admin (only one per shop)
           const { data: admin } = await supabase
             .from("user_roles")
             .select("user_id, expires_at, profiles(full_name, email)")
             .eq("shop_id", shop.id)
             .eq("role", "shop_admin")
-            .single();
+            .maybeSingle();
 
-          // Get total revenue for this shop (all sales)
+          // Get total revenue for this shop
           const { data: sales } = await supabase
             .from("sales")
             .select("sell_price, discount, quantity")
@@ -55,12 +54,27 @@ function SubscriptionsPage() {
             0
           );
 
+          // Determine status:
+          let status = "No admin";
+          let isActive = false;
+          if (admin) {
+            if (admin.expires_at) {
+              isActive = new Date(admin.expires_at) > new Date();
+              status = isActive ? "Active" : "Expired";
+            } else {
+              // No expiry set – treat as active (or "Never" but we'll show "Active")
+              isActive = true;
+              status = "Active";
+            }
+          }
+
           return {
             shop,
             admin: admin?.profiles || null,
             expires_at: admin?.expires_at || null,
             revenue,
-            is_active: admin?.expires_at ? new Date(admin.expires_at) > new Date() : false,
+            is_active: isActive,
+            status,
           };
         })
       );
@@ -94,6 +108,7 @@ function SubscriptionsPage() {
               <TableRow>
                 <TableHead className={theme === "dark" ? "text-slate-300" : ""}>Shop</TableHead>
                 <TableHead className={theme === "dark" ? "text-slate-300" : ""}>Admin</TableHead>
+                <TableHead className={theme === "dark" ? "text-slate-300" : ""}>Admin Email</TableHead>
                 <TableHead className={theme === "dark" ? "text-slate-300" : ""}>Expiry Date</TableHead>
                 <TableHead className={theme === "dark" ? "text-slate-300" : ""}>Status</TableHead>
                 <TableHead className={cn("text-right", theme === "dark" ? "text-slate-300" : "")}>Revenue</TableHead>
@@ -102,7 +117,7 @@ function SubscriptionsPage() {
             <TableBody>
               {subscriptions.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className={cn("text-center py-6", theme === "dark" ? "text-slate-400" : "text-muted-foreground")}>
+                  <TableCell colSpan={6} className={cn("text-center py-6", theme === "dark" ? "text-slate-400" : "text-muted-foreground")}>
                     No subscriptions found.
                   </TableCell>
                 </TableRow>
@@ -114,11 +129,18 @@ function SubscriptionsPage() {
                     {sub.admin?.full_name || "—"}
                   </TableCell>
                   <TableCell className={theme === "dark" ? "text-slate-300" : ""}>
+                    {sub.admin?.email || "—"}
+                  </TableCell>
+                  <TableCell className={theme === "dark" ? "text-slate-300" : ""}>
                     {sub.expires_at ? new Date(sub.expires_at).toLocaleDateString() : "Never"}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={sub.is_active ? "secondary" : "destructive"}>
-                      {sub.is_active ? "Active" : "Expired"}
+                    <Badge variant={
+                      sub.status === "Active" ? "secondary" :
+                      sub.status === "Expired" ? "destructive" :
+                      "outline"
+                    }>
+                      {sub.status}
                     </Badge>
                   </TableCell>
                   <TableCell className={cn("text-right font-semibold", theme === "dark" ? "text-slate-200" : "")}>
