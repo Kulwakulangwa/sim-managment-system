@@ -13,13 +13,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Plus, Minus, ShoppingCart, Check } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { generateReceipt } from "@/lib/receipt";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/sales/pos")({ component: POS });
 
-// ─── Theme tokens ────────────────────────────────────────────
 const BUTTON_GRADIENT = "bg-gradient-to-r from-pink-500 to-rose-500 hover:shadow-lg hover:shadow-pink-500/30 transition-all duration-200";
 
 function POS() {
@@ -40,7 +38,6 @@ function POS() {
   const [downPayment, setDownPayment] = useState("0");
   const [imei, setImei] = useState("");
 
-  // ─── Data fetching ──────────────────────────────────────────
   const { data: items = [] } = useQuery({
     queryKey: ["inventory-pos"],
     queryFn: async () => {
@@ -151,39 +148,14 @@ function POS() {
 
       return { saleId: sale.id, saleDate: sale.sale_date };
     },
-    onSuccess: async ({ saleId, saleDate }) => {
+    onSuccess: async () => {
       toast.success(t("saleCompleted"));
-      const label = selected ? (selected.item_type === "phone" ? `${selected.brand ?? ""} ${selected.model ?? ""}`.trim() : selected.name ?? "") : "";
-      const cust = customerId !== "none" ? customers.find((c) => c.id === customerId) : null;
-      
-      // ✅ Generate receipt with IMEI and open in new tab
-      const pdfData = generateReceipt({
-        shopName: t("appName"),
-        saleId,
-        date: saleDate,
-        itemLabel: label,
-        quantity: qty,
-        unitPrice: unit,
-        discount: Number(discount || 0),
-        total,
-        customerName: cust?.full_name ?? newCust.name ?? null,
-        customerPhone: cust?.phone ?? newCust.phone ?? null,
-        paymentType: paymentType === "cash" ? t("cash") : t("installment"),
-        warrantyMonths: Number(warrantyMonths || 0) || null,
-        imei: selected.item_type === "phone" ? imei : null, // ✅ Pass IMEI
-      });
-
-      if (pdfData) {
-        window.open(pdfData, "_blank");
-      }
-
       qc.invalidateQueries();
       navigate({ to: "/sales" });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  // ─── Render ──────────────────────────────────────────────────
   return (
     <div className={cn(
       "space-y-6 -m-4 sm:-m-6 p-4 sm:p-6 min-h-full rounded-3xl",
@@ -213,7 +185,6 @@ function POS() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left – Item selection */}
         <Card className={cn(
           "lg:col-span-2 border-0 shadow-md backdrop-blur-sm",
           theme === "dark" ? "bg-slate-800/90" : "bg-white/90"
@@ -295,7 +266,6 @@ function POS() {
           </CardContent>
         </Card>
 
-        {/* Right – Sale form */}
         <Card className={cn(
           "border-0 shadow-md backdrop-blur-sm",
           theme === "dark" ? "bg-slate-800/90" : "bg-white/90"
@@ -311,7 +281,6 @@ function POS() {
           <CardContent className="space-y-4 pt-4">
             {selected ? (
               <>
-                {/* Selected item preview */}
                 <div className={cn(
                   "rounded-xl p-4 border flex items-center gap-4",
                   theme === "dark"
@@ -342,7 +311,6 @@ function POS() {
                   </div>
                 </div>
 
-                {/* IMEI – only for phones */}
                 {selected.item_type === "phone" && (
                   <div>
                     <Label className={cn(
@@ -369,7 +337,6 @@ function POS() {
                   </div>
                 )}
 
-                {/* Quantity */}
                 <div>
                   <Label className={cn(
                     "text-sm font-medium",
@@ -414,7 +381,6 @@ function POS() {
                   </div>
                 </div>
 
-                {/* Discount */}
                 <div>
                   <Label className={cn(
                     "text-sm font-medium",
@@ -435,7 +401,6 @@ function POS() {
                   />
                 </div>
 
-                {/* Customer */}
                 <div>
                   <Label className={cn(
                     "text-sm font-medium",
@@ -489,7 +454,6 @@ function POS() {
                   )}
                 </div>
 
-                {/* Payment Type */}
                 <div>
                   <Label className={cn(
                     "text-sm font-medium",
@@ -513,7 +477,6 @@ function POS() {
                   </Select>
                 </div>
 
-                {/* Installment options */}
                 {paymentType === "installment" && (
                   <div className={cn(
                     "space-y-2 p-3 rounded-lg border",
@@ -562,7 +525,6 @@ function POS() {
                   </div>
                 )}
 
-                {/* Warranty – only for phones */}
                 {selected.item_type === "phone" && (
                   <div>
                     <Label className={cn(
@@ -585,7 +547,6 @@ function POS() {
                   </div>
                 )}
 
-                {/* Totals */}
                 <div className={cn(
                   "space-y-1 border-t pt-3 text-sm",
                   theme === "dark" ? "border-slate-700" : "border-slate-200"
@@ -613,7 +574,6 @@ function POS() {
                   </div>
                 </div>
 
-                {/* Complete Sale Button */}
                 <Button
                   className={`w-full ${BUTTON_GRADIENT} text-white font-medium h-12 text-base`}
                   onClick={() => complete.mutate()}
