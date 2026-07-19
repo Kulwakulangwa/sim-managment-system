@@ -16,11 +16,9 @@ import {
   Plus,
   Package,
   Receipt,
-  CalendarClock,
 } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
-import { Card } from "@/components/ui/card";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -136,65 +134,63 @@ function QuickAction({
 // ─── Main Dashboard ────────────────────────────────────────
 function Dashboard() {
   const { t } = useI18n();
-  const { data: myRole } = useMyRole();
+  const { data: myRole, error: roleError } = useMyRole();
   const { theme } = useTheme();
   const isSuper = myRole?.isSuperAdmin ?? false;
 
-  // ── Fetch current user's expiry for self-view ──
-  const { data: userRole } = useQuery({
-    queryKey: ["user-role-expiry"],
-    enabled: !isSuper, // only for non-super admins
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select("expires_at, role")
-        .eq("user_id", user.id)
-        .single();
-      if (error) throw error;
-      return data;
-    },
-  });
+  console.log("[Dashboard] myRole:", myRole);
+  console.log("[Dashboard] roleError:", roleError);
+  console.log("[Dashboard] isSuper:", isSuper);
 
-  const { data: stats } = useQuery({
+  const { data: stats, error: statsError, isLoading } = useQuery({
     queryKey: ["dashboard-stats"],
     enabled: !isSuper,
     queryFn: async () => {
-      const now = new Date();
-      const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-      const startMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      try {
+        const now = new Date();
+        const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+        const startMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-      const [todayRes, monthRes, lowStockRes, repairsRes, debtorsRes] = await Promise.all([
-        supabase.from("sales").select("sell_price, discount, quantity, profit").gte("sale_date", startToday),
-        supabase.from("sales").select("sell_price, discount, quantity, profit").gte("sale_date", startMonth),
-        supabase.from("inventory_items").select("id, quantity, low_stock_threshold"),
-        supabase.from("repairs").select("id").in("status", ["received", "in_progress"]),
-        supabase.from("installment_plans").select("balance"),
-      ]);
+        const [todayRes, monthRes, lowStockRes, repairsRes, debtorsRes] = await Promise.all([
+          supabase.from("sales").select("sell_price, discount, quantity, profit").gte("sale_date", startToday),
+          supabase.from("sales").select("sell_price, discount, quantity, profit").gte("sale_date", startMonth),
+          supabase.from("inventory_items").select("id, quantity, low_stock_threshold"),
+          supabase.from("repairs").select("id").in("status", ["received", "in_progress"]),
+          supabase.from("installment_plans").select("balance"),
+        ]);
 
-      type SaleRow = { sell_price: number; discount: number; quantity: number; profit: number | null };
-      const sum = (rows: SaleRow[] | null) =>
-        (rows ?? []).reduce((s, r) => s + (Number(r.sell_price) - Number(r.discount)) * Number(r.quantity), 0);
-      const sumProfit = (rows: SaleRow[] | null) =>
-        (rows ?? []).reduce((s, r) => s + Number(r.profit ?? 0), 0);
+        console.log("[Dashboard] Query results:", { todayRes, monthRes, lowStockRes, repairsRes, debtorsRes });
 
-      const low = (lowStockRes.data ?? []).filter((i) => (i.quantity ?? 0) <= (i.low_stock_threshold ?? 1)).length;
-      const debt = (debtorsRes.data ?? []).reduce((s, r) => s + Number(r.balance ?? 0), 0);
-      const month = sum(monthRes.data);
-      const monthProfit = sumProfit(monthRes.data);
+        type SaleRow = { sell_price: number; discount: number; quantity: number; profit: number | null };
+        const sum = (rows: SaleRow[] | null) =>
+          (rows ?? []).reduce((s, r) => s + (Number(r.sell_price) - Number(r.discount)) * Number(r.quantity), 0);
+        const sumProfit = (rows: SaleRow[] | null) =>
+          (rows ?? []).reduce((s, r) => s + Number(r.profit ?? 0), 0);
 
-      return {
-        today: sum(todayRes.data),
-        month,
-        monthProfit,
-        marginPct: month > 0 ? (monthProfit / month) * 100 : 0,
-        lowStock: low,
-        openRepairs: (repairsRes.data ?? []).length,
-        debtors: debt,
-      };
+        const low = (lowStockRes.data ?? []).filter((i) => (i.quantity ?? 0) <= (i.low_stock_threshold ?? 1)).length;
+        const debt = (debtorsRes.data ?? []).reduce((s, r) => s + Number(r.balance ?? 0), 0);
+        const month = sum(monthRes.data);
+        const monthProfit = sumProfit(monthRes.data);
+
+        return {
+          today: sum(todayRes.data),
+          month,
+          monthProfit,
+          marginPct: month > 0 ? (monthProfit / month) * 100 : 0,
+          lowStock: low,
+          openRepairs: (repairsRes.data ?? []).length,
+          debtors: debt,
+        };
+      } catch (err) {
+        console.error("[Dashboard] Query error:", err);
+        throw err;
+      }
     },
   });
+
+  console.log("[Dashboard] stats:", stats);
+  console.log("[Dashboard] statsError:", statsError);
+  console.log("[Dashboard] isLoading:", isLoading);
 
   if (isSuper) return <PlatformDashboard />;
 
@@ -207,38 +203,6 @@ function Dashboard() {
     { label: t("debtors"), value: formatTZS(stats?.debtors ?? 0), icon: CreditCard, badge: "wine" },
   ];
 
-  // ── Expiry self-view ──
-  const expiryCard = userRole ? (
-    <Card className="border-0 bg-white/80 shadow-sm backdrop-blur-sm dark:bg-slate-800/90 p-4 col-span-full">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-3">
-          <div className="rounded-full bg-gradient-to-br from-pink-500/20 to-rose-500/10 p-2 ring-1 ring-pink-500/20">
-            <CalendarClock className="h-5 w-5 text-pink-500" />
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground dark:text-slate-400">Account Expiry</p>
-            <p className="text-lg font-semibold text-slate-800 dark:text-white">
-              {userRole.expires_at ? (
-                new Date(userRole.expires_at) < new Date() ? (
-                  <span className="text-red-500">Expired</span>
-                ) : (
-                  new Date(userRole.expires_at).toLocaleDateString()
-                )
-              ) : (
-                "Never"
-              )}
-            </p>
-          </div>
-        </div>
-        {userRole.expires_at && new Date(userRole.expires_at) > new Date() && (
-          <div className="text-sm text-muted-foreground dark:text-slate-400">
-            {Math.ceil((new Date(userRole.expires_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days remaining
-          </div>
-        )}
-      </div>
-    </Card>
-  ) : null;
-
   return (
     <div className={cn(
       "space-y-6 -m-4 sm:-m-6 p-4 sm:p-6 min-h-full rounded-3xl",
@@ -248,9 +212,6 @@ function Dashboard() {
         <h1 className="text-2xl font-bold text-slate-800 dark:text-white">{t("dashboard")}</h1>
         <p className="text-sm text-slate-400 dark:text-slate-400">{t("tagline")}</p>
       </div>
-
-      {/* Expiry card */}
-      {expiryCard}
 
       <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
         {cards.map((c) => (
@@ -285,29 +246,37 @@ function Dashboard() {
 function PlatformDashboard() {
   const { t } = useI18n();
   const { theme } = useTheme();
-  const { data: stats } = useQuery({
+  const { data: stats, error: statsError } = useQuery({
     queryKey: ["platform-stats"],
     queryFn: async () => {
-      const [shopsRes, usersRes, salesRes, repairsRes] = await Promise.all([
-        supabase.from("shops").select("id, status"),
-        supabase.from("user_roles").select("user_id"),
-        supabase.from("sales").select("sell_price, discount, quantity"),
-        supabase.from("repairs").select("id"),
-      ]);
-      const shops = shopsRes.data ?? [];
-      const totalSales = (salesRes.data ?? []).reduce(
-        (s, r) => s + (Number(r.sell_price) - Number(r.discount)) * Number(r.quantity), 0,
-      );
-      return {
-        totalShops: shops.length,
-        activeShops: shops.filter((s) => s.status === "active").length,
-        suspendedShops: shops.filter((s) => s.status === "suspended").length,
-        totalUsers: new Set((usersRes.data ?? []).map((r) => r.user_id)).size,
-        totalSales,
-        totalRepairs: (repairsRes.data ?? []).length,
-      };
+      try {
+        const [shopsRes, usersRes, salesRes, repairsRes] = await Promise.all([
+          supabase.from("shops").select("id, status"),
+          supabase.from("user_roles").select("user_id"),
+          supabase.from("sales").select("sell_price, discount, quantity"),
+          supabase.from("repairs").select("id"),
+        ]);
+        const shops = shopsRes.data ?? [];
+        const totalSales = (salesRes.data ?? []).reduce(
+          (s, r) => s + (Number(r.sell_price) - Number(r.discount)) * Number(r.quantity), 0,
+        );
+        return {
+          totalShops: shops.length,
+          activeShops: shops.filter((s) => s.status === "active").length,
+          suspendedShops: shops.filter((s) => s.status === "suspended").length,
+          totalUsers: new Set((usersRes.data ?? []).map((r) => r.user_id)).size,
+          totalSales,
+          totalRepairs: (repairsRes.data ?? []).length,
+        };
+      } catch (err) {
+        console.error("[PlatformDashboard] Query error:", err);
+        throw err;
+      }
     },
   });
+
+  console.log("[PlatformDashboard] stats:", stats);
+  console.log("[PlatformDashboard] statsError:", statsError);
 
   const cards: { label: string; value: string; icon: React.ElementType; badge: keyof typeof TILE_GRADIENTS }[] = [
     { label: t("totalShops"), value: String(stats?.totalShops ?? 0), icon: Store, badge: "slate" },
