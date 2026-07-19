@@ -82,7 +82,13 @@ export const createShopAdmin = createServerFn({ method: "POST" })
     if (e1) throw new Error(e1.message);
     const uid = created.user!.id;
 
-    await supabaseAdmin.from("profiles").upsert({ id: uid, full_name: data.full_name, phone: data.phone ?? null });
+    // ✅ Store email in profiles
+    await supabaseAdmin.from("profiles").upsert({
+      id: uid,
+      full_name: data.full_name,
+      phone: data.phone ?? null,
+      email: data.email,
+    });
 
     const expiresAt = new Date();
     expiresAt.setMonth(expiresAt.getMonth() + data.validity_months);
@@ -170,7 +176,12 @@ export const createStaff = createServerFn({ method: "POST" })
     });
     if (e1) throw new Error(e1.message);
     const uid = created.user!.id;
-    await supabaseAdmin.from("profiles").upsert({ id: uid, full_name: data.full_name, phone: data.phone ?? null });
+    await supabaseAdmin.from("profiles").upsert({
+      id: uid,
+      full_name: data.full_name,
+      phone: data.phone ?? null,
+      email: data.email,
+    });
     const { error: e2 } = await supabaseAdmin.from("user_roles").insert({ user_id: uid, role: data.role, shop_id: admin.shop_id });
     if (e2) throw new Error(e2.message);
     return { user_id: uid };
