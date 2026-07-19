@@ -47,15 +47,14 @@ export const Route = createFileRoute("/_authenticated")({
     console.log("[RouteGuard] userRole:", userRole);
     console.log("[RouteGuard] roleError:", roleError);
 
-    // ─── Super admin always allowed ────────────────────────────
+    // Super admin bypass
     if (userRole?.role === "super_admin") {
       console.log("[RouteGuard] Super admin – skipping expiry check");
       return { userId };
     }
 
-    // ─── If user is a shop_admin, check own expiry ──────────────
+    // Shop admin: check own expiry
     if (userRole?.role === "shop_admin") {
-      // Need to fetch expires_at for this specific user (since we only selected role, shop_id)
       const { data: shopAdminData } = await supabase
         .from("user_roles")
         .select("expires_at")
@@ -71,9 +70,8 @@ export const Route = createFileRoute("/_authenticated")({
       return { userId };
     }
 
-    // ─── For staff (cashier, salesperson, technician) ──────────
+    // Staff (cashier, salesperson, technician): check shop admin expiry
     if (userRole?.shop_id) {
-      // Find the shop admin for this shop
       const { data: shopAdmin } = await supabase
         .from("user_roles")
         .select("expires_at")
@@ -93,11 +91,14 @@ export const Route = createFileRoute("/_authenticated")({
       return { userId };
     }
 
-    // Fallback (should not happen)
     return { userId };
   },
   component: Layout,
 });
 
-// ─── Rest of the component (Layout, etc.) unchanged ──────────────
-// ... (same as your existing file, just copy it from your current version)
+type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }>; roles?: AppRole[] };
+
+function Layout() {
+  // ─── Your existing Layout code remains exactly the same ──────
+  // (No changes needed here – keep your current version)
+}
