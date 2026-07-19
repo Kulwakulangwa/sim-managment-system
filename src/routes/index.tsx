@@ -33,17 +33,25 @@ function HomePage() {
       return;
     }
 
-    // ✅ Check if the user's account has expired
+    // ─── Expiry check ──────────────────────────────────────────
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const { data: roleData } = await supabase
+      const { data: roleData, error: roleError } = await supabase
         .from("user_roles")
         .select("expires_at, role")
         .eq("user_id", user.id)
         .single();
 
-      if (roleData?.role !== "super_admin") {
+      console.log("[Login] roleData:", roleData);
+      console.log("[Login] roleError:", roleError);
+
+      // Super admin bypass
+      if (roleData?.role === "super_admin") {
+        console.log("[Login] Super admin – skipping expiry check");
+      } else {
+        // For everyone else, check expiry
         const expired = !roleData?.expires_at || new Date(roleData.expires_at) < new Date();
+        console.log("[Login] Expired?", expired, "expires_at:", roleData?.expires_at);
         if (expired) {
           await supabase.auth.signOut();
           setError("Your account has expired. Please contact your administrator.");
@@ -65,7 +73,7 @@ function HomePage() {
       "flex min-h-screen flex-col md:flex-row",
       theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
     )}>
-      {/* LEFT PANEL */}
+      {/* LEFT PANEL – same as before */}
       <div className="relative hidden flex-1 flex-col items-center justify-between text-white md:flex lg:flex-[1.15]">
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -96,7 +104,7 @@ function HomePage() {
         </div>
       </div>
 
-      {/* RIGHT PANEL */}
+      {/* RIGHT PANEL – Login form */}
       <div className={cn(
         "flex flex-1 flex-col px-6 py-8 md:px-12 md:py-12",
         theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
