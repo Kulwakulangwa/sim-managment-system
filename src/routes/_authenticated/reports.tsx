@@ -6,9 +6,13 @@ import { formatTZS } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, DollarSign, Receipt, BarChart3, Package, ShoppingCart, Wrench } from "lucide-react";
+import { TrendingUp, DollarSign, Receipt, BarChart3, Package, ShoppingCart, Wrench, Calendar } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/reports")({ component: ReportsPage });
 
@@ -53,27 +57,80 @@ function ReportsPage() {
   const { t } = useI18n();
   const { theme } = useTheme();
 
-  const { data } = useQuery({
-    queryKey: ["reports"],
+  // ─── Date range state ────────────────────────────────────────
+  const today = new Date();
+  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const formatDateInput = (d: Date) => d.toISOString().slice(0, 10);
+
+  const [startDate, setStartDate] = useState(formatDateInput(startOfMonth));
+  const [endDate, setEndDate] = useState(formatDateInput(today));
+
+  // ─── Preset handlers ────────────────────────────────────────
+  const setPreset = (preset: "today" | "week" | "month" | "year") => {
+    const now = new Date();
+    let start = new Date();
+    let end = new Date(now);
+    switch (preset) {
+      case "today":
+        start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        break;
+      case "week":
+        const day = now.getDay();
+        start = new Date(now);
+        start.setDate(now.getDate() - day + (day === 0 ? -6 : 1)); // Monday
+        end = new Date(now);
+        break;
+      case "month":
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        end = new Date(now);
+        break;
+      case "year":
+        start = new Date(now.getFullYear(), 0, 1);
+        end = new Date(now);
+        break;
+    }
+    setStartDate(formatDateInput(start));
+    setEndDate(formatDateInput(end));
+  };
+
+  // ─── Data fetching with date filters ──────────────────────
+  const { data, isLoading } = useQuery({
+    queryKey: ["reports", startDate, endDate],
     queryFn: async () => {
+      const start = startDate ? new Date(startDate).toISOString() : null;
+      const end = endDate ? new Date(endDate + "T23:59:59").toISOString() : null;
+
+      // Build date filters
+      const saleFilter = (query: any) => {
+        if (start) query = query.gte("sale_date", start);
+        if (end) query = query.lte("sale_date", end);
+        return query;
+      };
+      const expenseFilter = (query: any) => {
+        if (start) query = query.gte("expense_date", start);
+        if (end) query = query.lte("expense_date", end);
+        return query;
+      };
+
       const [salesRes, expRes, invRes, repairsRes] = await Promise.all([
-        supabase.from("sales").select("sell_price, discount, quantity, profit, inventory_items(brand, model, item_type, name)"),
-        supabase.from("expenses").select("amount"),
+        saleFilter(supabase.from("sales").select("sell_price, discount, quantity, profit, inventory_items(brand, model, item_type, name)")),
+        expenseFilter(supabase.from("expenses").select("amount")),
         supabase.from("inventory_items").select("*").order("quantity"),
-        supabase.from("repairs").select("repair_cost, paid_amount, payment_status, status"),
+        saleFilter(supabase.from("repairs").select("repair_cost, paid_amount, payment_status, status")), // repairs use sale_date as received_date
       ]);
+
       const sales = salesRes.data ?? [];
       const totalRev = sales.reduce((s, r) => s + (Number(r.sell_price) - Number(r.discount)) * Number(r.quantity), 0);
       const totalProfit = sales.reduce((s, r) => s + Number(r.profit ?? 0), 0);
       const totalExp = (expRes.data ?? []).reduce((s, r) => s + Number(r.amount), 0);
 
-      // Repair income: sum of paid_amount for completed repairs with payment_status = 'paid'
       const repairs = repairsRes.data ?? [];
       const repairIncome = repairs
         .filter((r) => r.status === "completed" && r.payment_status === "paid")
         .reduce((sum, r) => sum + Number(r.paid_amount || 0), 0);
 
-      // best sellers
+      // Best sellers
       const bucket = new Map<string, number>();
       for (const s of sales) {
         const it = s.inventory_items;
@@ -116,6 +173,40 @@ function ReportsPage() {
         </div>
       </div>
 
+      {/* ─── Date range picker ────────────────────────────────── */}
+      <div className="flex flex-wrap items-end gap-3 bg-white/80 dark:bg-slate-800/90 p-4 rounded-xl backdrop-blur-sm border border-black/5 dark:border-slate-700/50">
+        <div>
+          <Label className="text-xs font-medium text-muted-foreground dark:text-slate-400">From</Label>
+          <Input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className={cn(
+              "w-40",
+              theme === "dark" ? "border-slate-700 bg-slate-900 text-white" : ""
+            )}
+          />
+        </div>
+        <div>
+          <Label className="text-xs font-medium text-muted-foreground dark:text-slate-400">To</Label>
+          <Input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className={cn(
+              "w-40",
+              theme === "dark" ? "border-slate-700 bg-slate-900 text-white" : ""
+            )}
+          />
+        </div>
+        <div className="flex flex-wrap gap-1">
+          <Button size="sm" variant="outline" onClick={() => setPreset("today")} className="text-xs">Today</Button>
+          <Button size="sm" variant="outline" onClick={() => setPreset("week")} className="text-xs">This Week</Button>
+          <Button size="sm" variant="outline" onClick={() => setPreset("month")} className="text-xs">This Month</Button>
+          <Button size="sm" variant="outline" onClick={() => setPreset("year")} className="text-xs">This Year</Button>
+        </div>
+      </div>
+
       {/* Stats cards */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
@@ -123,9 +214,8 @@ function ReportsPage() {
         ))}
       </div>
 
-      {/* Tables – same as before */}
+      {/* Tables */}
       <div className="grid gap-4 lg:grid-cols-2">
-        {/* Best Sellers */}
         <Card className={cn(
           "border-0 shadow-sm backdrop-blur-sm",
           theme === "dark"
@@ -171,7 +261,6 @@ function ReportsPage() {
           </CardContent>
         </Card>
 
-        {/* Stock Report */}
         <Card className={cn(
           "border-0 shadow-sm backdrop-blur-sm",
           theme === "dark"
