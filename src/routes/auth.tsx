@@ -1,4 +1,3 @@
-// src/routes/auth.tsx
 import { useState } from 'react';
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
 import { supabase } from '@/integrations/supabase/client';
@@ -43,9 +42,9 @@ function AuthPage() {
         .eq("user_id", user.id)
         .single();
 
-      if (roleData?.expires_at) {
-        const expired = new Date(roleData.expires_at) < new Date();
-        if (expired && roleData.role !== "super_admin") {
+      if (roleData?.role !== "super_admin") {
+        const expired = !roleData?.expires_at || new Date(roleData.expires_at) < new Date();
+        if (expired) {
           await supabase.auth.signOut();
           setError("Your account has expired. Please contact your administrator.");
           setLoading(false);
