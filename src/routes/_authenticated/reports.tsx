@@ -101,24 +101,33 @@ function ReportsPage() {
       const start = startDate ? new Date(startDate).toISOString() : null;
       const end = endDate ? new Date(endDate + "T23:59:59").toISOString() : null;
 
-      // Build date filters
-      const saleFilter = (query: any) => {
-        if (start) query = query.gte("sale_date", start);
-        if (end) query = query.lte("sale_date", end);
-        return query;
-      };
-      const expenseFilter = (query: any) => {
-        if (start) query = query.gte("expense_date", start);
-        if (end) query = query.lte("expense_date", end);
-        return query;
-      };
+      // ── Sales ──
+      let salesQuery = supabase
+        .from("sales")
+        .select("sell_price, discount, quantity, profit, inventory_items(brand, model, item_type, name)");
+      if (start) salesQuery = salesQuery.gte("sale_date", start);
+      if (end) salesQuery = salesQuery.lte("sale_date", end);
+      const salesRes = await salesQuery;
 
-      const [salesRes, expRes, invRes, repairsRes] = await Promise.all([
-        saleFilter(supabase.from("sales").select("sell_price, discount, quantity, profit, inventory_items(brand, model, item_type, name)")),
-        expenseFilter(supabase.from("expenses").select("amount")),
-        supabase.from("inventory_items").select("*").order("quantity"),
-        saleFilter(supabase.from("repairs").select("repair_cost, paid_amount, payment_status, status")), // repairs use sale_date as received_date
-      ]);
+      // ── Expenses ──
+      let expQuery = supabase.from("expenses").select("amount");
+      if (start) expQuery = expQuery.gte("expense_date", start);
+      if (end) expQuery = expQuery.lte("expense_date", end);
+      const expRes = await expQuery;
+
+      // ── Repairs (uses received_date) ──
+      let repairsQuery = supabase
+        .from("repairs")
+        .select("repair_cost, paid_amount, payment_status, status");
+      if (start) repairsQuery = repairsQuery.gte("received_date", start);
+      if (end) repairsQuery = repairsQuery.lte("received_date", end);
+      const repairsRes = await repairsQuery;
+
+      // ── Inventory ──
+      const invRes = await supabase
+        .from("inventory_items")
+        .select("*")
+        .order("quantity");
 
       const sales = salesRes.data ?? [];
       const totalRev = sales.reduce((s, r) => s + (Number(r.sell_price) - Number(r.discount)) * Number(r.quantity), 0);
@@ -139,7 +148,16 @@ function ReportsPage() {
         bucket.set(key, (bucket.get(key) ?? 0) + Number(s.quantity));
       }
       const best = Array.from(bucket.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10);
-      return { totalRev, totalProfit, totalExp, netProfit: totalProfit - totalExp, best, inv: invRes.data ?? [], repairIncome };
+
+      return {
+        totalRev,
+        totalProfit,
+        totalExp,
+        netProfit: totalProfit - totalExp,
+        best,
+        inv: invRes.data ?? [],
+        repairIncome,
+      };
     },
   });
 
