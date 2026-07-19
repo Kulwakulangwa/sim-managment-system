@@ -1,6 +1,6 @@
 // src/routes/index.tsx
 import { useState } from 'react';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
 import { supabase } from '@/integrations/supabase/client';
 import { Link2, Linkedin, Share2, Download } from 'lucide-react';
 import { useTheme } from '@/lib/theme';
@@ -55,7 +55,6 @@ function HomePage() {
         <div className="absolute inset-0 bg-[#0B1221]/60" />
 
         <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-4">
-          {/* Pink "D" logo */}
           <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-500 to-rose-500 shadow-lg shadow-pink-500/30">
             <span className="font-serif text-4xl font-medium text-white">D</span>
           </div>
@@ -78,7 +77,7 @@ function HomePage() {
         </div>
       </div>
 
-      {/* RIGHT PANEL – Login form with dark mode support */}
+      {/* RIGHT PANEL – Login form */}
       <div className={cn(
         "flex flex-1 flex-col px-6 py-8 md:px-12 md:py-12",
         theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
@@ -160,6 +159,13 @@ function HomePage() {
           <a href="#" className="mt-4 block text-center text-sm text-[#6b7280] hover:text-[#0B1221] dark:text-slate-400 dark:hover:text-white">
             Forgot password?
           </a>
+
+          {/* ─── Legal footer ─── */}
+          <div className="mt-6 text-center text-xs text-muted-foreground dark:text-slate-500">
+            <Link to="/legal/terms" className="hover:underline">Terms</Link>
+            {' · '}
+            <Link to="/legal/privacy" className="hover:underline">Privacy</Link>
+          </div>
         </div>
       </div>
     </div>
