@@ -45,7 +45,6 @@ function AuthPage() {
       console.log("[Login] userRole:", userRole);
       console.log("[Login] roleError:", roleError);
 
-      // Super admin always allowed
       if (userRole?.role === "super_admin") {
         console.log("[Login] Super admin – skipping checks");
       } else {
@@ -53,14 +52,12 @@ function AuthPage() {
         let blockMessage = "";
 
         if (userRole?.role === "shop_admin") {
-          // Shop admin: check own expiry
           const expired = !userRole?.expires_at || new Date(userRole.expires_at) < new Date();
           if (expired) {
             blocked = true;
             blockMessage = "Your account has expired. Please contact your administrator.";
           }
         } else {
-          // Staff (cashier, salesperson, technician): check their shop_admin
           if (userRole?.shop_id) {
             const { data: shopAdmin, error: saError } = await supabase
               .from("user_roles")
@@ -99,7 +96,7 @@ function AuthPage() {
       "flex min-h-screen flex-col md:flex-row",
       theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
     )}>
-      {/* LEFT PANEL – Background image + brand */}
+      {/* LEFT PANEL */}
       <div className="relative hidden flex-1 flex-col items-center justify-between text-white md:flex lg:flex-[1.15]">
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -108,7 +105,6 @@ function AuthPage() {
         <div className="absolute inset-0 bg-[#0B1221]/60" />
 
         <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-4">
-          {/* Pink "D" logo */}
           <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-500 to-rose-500 shadow-lg shadow-pink-500/30">
             <span className="font-serif text-4xl font-medium text-white">D</span>
           </div>
@@ -120,18 +116,23 @@ function AuthPage() {
           </div>
         </div>
 
-        <div className="relative z-10 flex w-full items-center justify-between border-t border-white/10 px-8 py-4">
-          <span className="text-xs text-white/50">© royotechtz</span>
-          <div className="flex items-center gap-3">
-            <button className="text-white/40 transition hover:text-white/80"><Link2 className="h-4 w-4" /></button>
-            <button className="text-white/40 transition hover:text-white/80"><Linkedin className="h-4 w-4" /></button>
-            <button className="text-white/40 transition hover:text-white/80"><Share2 className="h-4 w-4" /></button>
-            <button className="text-white/40 transition hover:text-white/80"><Download className="h-4 w-4" /></button>
+        <div className="relative z-10 flex w-full flex-col items-center justify-between border-t border-white/10 px-8 py-4">
+          <div className="flex w-full items-center justify-between">
+            <span className="text-xs text-white/50">© royotechtz</span>
+            <div className="flex items-center gap-3">
+              <button className="text-white/40 transition hover:text-white/80"><Link2 className="h-4 w-4" /></button>
+              <button className="text-white/40 transition hover:text-white/80"><Linkedin className="h-4 w-4" /></button>
+              <button className="text-white/40 transition hover:text-white/80"><Share2 className="h-4 w-4" /></button>
+              <button className="text-white/40 transition hover:text-white/80"><Download className="h-4 w-4" /></button>
+            </div>
+          </div>
+          <div className="mt-1 text-center text-[10px] text-white/40">
+            For an account or any help contact <span className="text-white/60">0743006667</span>
           </div>
         </div>
       </div>
 
-      {/* RIGHT PANEL – Sign in form with dark mode */}
+      {/* RIGHT PANEL */}
       <div className={cn(
         "flex flex-1 flex-col px-6 py-8 md:px-12 md:py-12",
         theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
