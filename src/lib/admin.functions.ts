@@ -155,21 +155,35 @@ export const suspendShopAdmin = createServerFn({ method: "POST" })
     z.object({ user_id: z.string().uuid() }).parse(d),
   )
   .handler(async ({ data, context }) => {
+    console.log("[suspendShopAdmin] Called with user_id:", data.user_id);
+
+    // Check super_admin
     const { data: roles } = await context.supabase.from("user_roles").select("role").eq("user_id", context.userId);
-    if (!(roles ?? []).some((r) => r.role === "super_admin")) throw new Error("Forbidden");
+    if (!(roles ?? []).some((r) => r.role === "super_admin")) {
+      console.error("[suspendShopAdmin] Forbidden – caller is not super_admin");
+      throw new Error("Forbidden");
+    }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const past = new Date();
     past.setDate(past.getDate() - 1);
+    const pastISO = past.toISOString();
+    console.log("[suspendShopAdmin] Setting expires_at to:", pastISO);
 
-    const { error } = await supabaseAdmin
+    const { data: updated, error } = await supabaseAdmin
       .from("user_roles")
-      .update({ expires_at: past.toISOString() })
+      .update({ expires_at: pastISO })
       .eq("user_id", data.user_id)
-      .eq("role", "shop_admin");
+      .eq("role", "shop_admin")
+      .select();
 
-    if (error) throw new Error(error.message);
-    return { ok: true };
+    if (error) {
+      console.error("[suspendShopAdmin] Update error:", error);
+      throw new Error(error.message);
+    }
+
+    console.log("[suspendShopAdmin] Updated rows:", updated);
+    return { ok: true, updated };
   });
 
 // ─── Activate Shop Admin (Super Admin only) ────────────────
@@ -179,21 +193,34 @@ export const activateShopAdmin = createServerFn({ method: "POST" })
     z.object({ user_id: z.string().uuid(), months: z.number().int().min(1).default(12) }).parse(d),
   )
   .handler(async ({ data, context }) => {
+    console.log("[activateShopAdmin] Called with user_id:", data.user_id, "months:", data.months);
+
     const { data: roles } = await context.supabase.from("user_roles").select("role").eq("user_id", context.userId);
-    if (!(roles ?? []).some((r) => r.role === "super_admin")) throw new Error("Forbidden");
+    if (!(roles ?? []).some((r) => r.role === "super_admin")) {
+      console.error("[activateShopAdmin] Forbidden – caller is not super_admin");
+      throw new Error("Forbidden");
+    }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const future = new Date();
     future.setMonth(future.getMonth() + data.months);
+    const futureISO = future.toISOString();
+    console.log("[activateShopAdmin] Setting expires_at to:", futureISO);
 
-    const { error } = await supabaseAdmin
+    const { data: updated, error } = await supabaseAdmin
       .from("user_roles")
-      .update({ expires_at: future.toISOString() })
+      .update({ expires_at: futureISO })
       .eq("user_id", data.user_id)
-      .eq("role", "shop_admin");
+      .eq("role", "shop_admin")
+      .select();
 
-    if (error) throw new Error(error.message);
-    return { ok: true };
+    if (error) {
+      console.error("[activateShopAdmin] Update error:", error);
+      throw new Error(error.message);
+    }
+
+    console.log("[activateShopAdmin] Updated rows:", updated);
+    return { ok: true, updated };
   });
 
 // ──────────────────────────────────────────────────────────────
