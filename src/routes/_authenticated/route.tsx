@@ -21,12 +21,12 @@ import {
   History,
   BookOpen,
   ShieldAlert,
+  DollarSign, // <-- added for Subscriptions
 } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-// Import the theme hook
 import { useTheme } from "@/lib/theme";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -47,7 +47,6 @@ function Layout() {
   const role = myRole?.role ?? null;
   const isSuperFromHook = myRole?.isSuperAdmin ?? false;
 
-  // Hard‑coded super admin fallback (by email)
   const { data: user } = useQuery({
     queryKey: ["authUser"],
     queryFn: async () => {
@@ -65,14 +64,13 @@ function Layout() {
   const qc = useQueryClient();
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
-
-  // Theme hook for dark mode toggle
   const { theme, toggleTheme } = useTheme();
 
   const items: NavItem[] = isSuper
     ? [
         { to: "/dashboard", label: "platformDashboard", icon: LayoutDashboard },
         { to: "/shops", label: "shops", icon: Building2 },
+        { to: "/subscriptions", label: "Subscriptions", icon: DollarSign }, // <-- Added
         { to: "/audit", label: "auditLog", icon: History },
         { to: "/errors", label: "errorMonitoring", icon: ShieldAlert },
         { to: "/help", label: "helpCenter", icon: BookOpen },
@@ -101,7 +99,6 @@ function Layout() {
   };
 
   const visible = items.filter((it) => !it.roles || (role && it.roles.includes(role)));
-
   const roleLabel = role ? t(role) : "…";
 
   const nav = (
@@ -134,7 +131,6 @@ function Layout() {
       "min-h-screen flex",
       theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
     )}>
-      {/* Desktop sidebar – dark gradient with pink accents */}
       <aside className="hidden lg:flex w-64 bg-gradient-to-b from-[#1F0A28] to-[#2D1440] text-white flex-col border-r border-white/5 shadow-xl">
         <div className="p-5 flex items-center gap-3 border-b border-white/10">
           <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 shadow-lg shadow-pink-500/30">
@@ -170,13 +166,9 @@ function Layout() {
             >
               SW
             </button>
-            {/* Dark mode toggle */}
             <button
               onClick={toggleTheme}
-              className={cn(
-                "px-2 py-1 rounded transition",
-                "hover:bg-white/10"
-              )}
+              className="px-2 py-1 rounded transition hover:bg-white/10"
               aria-label="Toggle theme"
             >
               {theme === "light" ? "🌙" : "☀️"}
@@ -190,10 +182,14 @@ function Layout() {
           >
             <LogOut className="mr-2 h-4 w-4" /> {t("signOut")}
           </Button>
+          {/* Legal links in sidebar footer */}
+          <div className="flex justify-center gap-3 text-[10px] text-white/30 hover:text-white/60 transition">
+            <Link to="/legal/terms" className="hover:underline">Terms</Link>
+            <Link to="/legal/privacy" className="hover:underline">Privacy</Link>
+          </div>
         </div>
       </aside>
 
-      {/* Mobile overlay sidebar – same dark theme with pink accents */}
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-40 flex">
           <div className="w-64 bg-gradient-to-b from-[#1F0A28] to-[#2D1440] text-white flex flex-col shadow-2xl">
@@ -222,6 +218,10 @@ function Layout() {
               >
                 <LogOut className="mr-2 h-4 w-4" /> {t("signOut")}
               </Button>
+              <div className="flex justify-center gap-3 text-[10px] text-white/30 hover:text-white/60 transition mt-2">
+                <Link to="/legal/terms" className="hover:underline">Terms</Link>
+                <Link to="/legal/privacy" className="hover:underline">Privacy</Link>
+              </div>
             </div>
           </div>
           <div className="flex-1 bg-black/40 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
@@ -229,7 +229,6 @@ function Layout() {
       )}
 
       <main className="flex-1 flex flex-col min-w-0">
-        {/* Mobile header – matches the sidebar theme */}
         <header className={cn(
           "lg:hidden flex items-center justify-between border-b p-3",
           theme === "dark"
@@ -243,19 +242,9 @@ function Layout() {
             {t("appName")}
           </p>
           <div className="flex items-center gap-1 text-xs">
-            <button
-              onClick={() => setLang("en")}
-              className={lang === "en" ? "font-semibold" : "text-slate-400"}
-            >
-              EN
-            </button>
+            <button onClick={() => setLang("en")} className={lang === "en" ? "font-semibold" : "text-slate-400"}>EN</button>
             <span className="text-slate-300">·</span>
-            <button
-              onClick={() => setLang("sw")}
-              className={lang === "sw" ? "font-semibold" : "text-slate-400"}
-            >
-              SW
-            </button>
+            <button onClick={() => setLang("sw")} className={lang === "sw" ? "font-semibold" : "text-slate-400"}>SW</button>
           </div>
         </header>
         <div className="flex-1 overflow-y-auto p-4 lg:p-8">
