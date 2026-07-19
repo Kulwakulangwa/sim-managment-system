@@ -6,21 +6,21 @@ import { formatTZS } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, DollarSign, Receipt, BarChart3, Package, ShoppingCart } from "lucide-react";
+import { TrendingUp, DollarSign, Receipt, BarChart3, Package, ShoppingCart, Wrench } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/reports")({ component: ReportsPage });
 
-// ─── Colored badge mapping (matches dashboard) ──────────────
+// ─── Colored badge mapping ────────────────────────────────────
 const TILE_GRADIENTS: Record<string, string> = {
   ember: "bg-gradient-to-br from-[#F2994A] to-[#F2C94C]",
   wine: "bg-gradient-to-br from-[#6B2338] to-[#3C1524]",
   crimson: "bg-gradient-to-br from-[#E63965] to-[#A81F49]",
   slate: "bg-gradient-to-br from-[#4A4458] to-[#2E2A38]",
+  pink: "bg-gradient-to-br from-pink-500 to-rose-500",
 };
 
-// ─── Stat Card ────────────────────────────────────────────────
 function StatCard({
   label,
   value,
@@ -56,15 +56,23 @@ function ReportsPage() {
   const { data } = useQuery({
     queryKey: ["reports"],
     queryFn: async () => {
-      const [salesRes, expRes, invRes] = await Promise.all([
+      const [salesRes, expRes, invRes, repairsRes] = await Promise.all([
         supabase.from("sales").select("sell_price, discount, quantity, profit, inventory_items(brand, model, item_type, name)"),
         supabase.from("expenses").select("amount"),
         supabase.from("inventory_items").select("*").order("quantity"),
+        supabase.from("repairs").select("repair_cost, paid_amount, payment_status, status"),
       ]);
       const sales = salesRes.data ?? [];
       const totalRev = sales.reduce((s, r) => s + (Number(r.sell_price) - Number(r.discount)) * Number(r.quantity), 0);
       const totalProfit = sales.reduce((s, r) => s + Number(r.profit ?? 0), 0);
       const totalExp = (expRes.data ?? []).reduce((s, r) => s + Number(r.amount), 0);
+
+      // Repair income: sum of paid_amount for completed repairs with payment_status = 'paid'
+      const repairs = repairsRes.data ?? [];
+      const repairIncome = repairs
+        .filter((r) => r.status === "completed" && r.payment_status === "paid")
+        .reduce((sum, r) => sum + Number(r.paid_amount || 0), 0);
+
       // best sellers
       const bucket = new Map<string, number>();
       for (const s of sales) {
@@ -74,15 +82,15 @@ function ReportsPage() {
         bucket.set(key, (bucket.get(key) ?? 0) + Number(s.quantity));
       }
       const best = Array.from(bucket.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10);
-      return { totalRev, totalProfit, totalExp, netProfit: totalProfit - totalExp, best, inv: invRes.data ?? [] };
+      return { totalRev, totalProfit, totalExp, netProfit: totalProfit - totalExp, best, inv: invRes.data ?? [], repairIncome };
     },
   });
 
   const stats = [
-    { label: t("monthSales"), value: formatTZS(data?.totalRev ?? 0), icon: ShoppingCart, badge: "ember" },
-    { label: t("monthProfit"), value: formatTZS(data?.totalProfit ?? 0), icon: TrendingUp, badge: "crimson" },
-    { label: t("expenses"), value: formatTZS(data?.totalExp ?? 0), icon: Receipt, badge: "wine" },
-    { label: `${t("profit")} (net)`, value: formatTZS(data?.netProfit ?? 0), icon: DollarSign, badge: "slate" },
+    { label: "Sales Revenue", value: formatTZS(data?.totalRev ?? 0), icon: ShoppingCart, badge: "ember" },
+    { label: "Repair Income", value: formatTZS(data?.repairIncome ?? 0), icon: Wrench, badge: "pink" },
+    { label: "Expenses", value: formatTZS(data?.totalExp ?? 0), icon: Receipt, badge: "wine" },
+    { label: "Net Profit", value: formatTZS(data?.netProfit ?? 0), icon: DollarSign, badge: "slate" },
   ];
 
   return (
@@ -90,7 +98,7 @@ function ReportsPage() {
       "space-y-6 -m-4 sm:-m-6 p-4 sm:p-6 min-h-full rounded-3xl",
       theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
     )}>
-      {/* Header with gradient */}
+      {/* Header */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white shadow-xl">
         <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-pink-500/20 blur-3xl" />
         <div className="absolute bottom-0 left-20 h-24 w-24 rounded-full bg-rose-500/20 blur-2xl" />
@@ -108,14 +116,14 @@ function ReportsPage() {
         </div>
       </div>
 
-      {/* Stats cards – now using the same colored badges as dashboard */}
+      {/* Stats cards */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
           <StatCard key={s.label} {...s} />
         ))}
       </div>
 
-      {/* Tables grid */}
+      {/* Tables – same as before */}
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Best Sellers */}
         <Card className={cn(
