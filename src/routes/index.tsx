@@ -1,4 +1,3 @@
-// src/routes/index.tsx
 import { useState } from 'react';
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
 import { supabase } from '@/integrations/supabase/client';
@@ -43,10 +42,9 @@ function HomePage() {
         .eq("user_id", user.id)
         .single();
 
-      if (roleData?.expires_at) {
-        const expired = new Date(roleData.expires_at) < new Date();
-        if (expired && roleData.role !== "super_admin") {
-          // Sign out and show error
+      if (roleData?.role !== "super_admin") {
+        const expired = !roleData?.expires_at || new Date(roleData.expires_at) < new Date();
+        if (expired) {
           await supabase.auth.signOut();
           setError("Your account has expired. Please contact your administrator.");
           setLoading(false);
@@ -67,7 +65,7 @@ function HomePage() {
       "flex min-h-screen flex-col md:flex-row",
       theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
     )}>
-      {/* LEFT PANEL – same as before */}
+      {/* LEFT PANEL */}
       <div className="relative hidden flex-1 flex-col items-center justify-between text-white md:flex lg:flex-[1.15]">
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -98,7 +96,7 @@ function HomePage() {
         </div>
       </div>
 
-      {/* RIGHT PANEL – Login form */}
+      {/* RIGHT PANEL */}
       <div className={cn(
         "flex flex-1 flex-col px-6 py-8 md:px-12 md:py-12",
         theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
