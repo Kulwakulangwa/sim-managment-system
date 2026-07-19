@@ -82,7 +82,7 @@ export const createShopAdmin = createServerFn({ method: "POST" })
     if (e1) throw new Error(e1.message);
     const uid = created.user!.id;
 
-    // ✅ Store email in profiles
+    // Store email in profiles
     await supabaseAdmin.from("profiles").upsert({
       id: uid,
       full_name: data.full_name,
@@ -146,6 +146,54 @@ export const extendShopAdminExpiration = createServerFn({ method: "POST" })
 
     if (error) throw new Error(error.message);
     return { ok: true, new_expiry: newExpiry };
+  });
+
+// ─── Suspend Shop Admin (Super Admin only) ────────────────
+export const suspendShopAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { user_id: string }) =>
+    z.object({ user_id: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: roles } = await context.supabase.from("user_roles").select("role").eq("user_id", context.userId);
+    if (!(roles ?? []).some((r) => r.role === "super_admin")) throw new Error("Forbidden");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const past = new Date();
+    past.setDate(past.getDate() - 1);
+
+    const { error } = await supabaseAdmin
+      .from("user_roles")
+      .update({ expires_at: past.toISOString() })
+      .eq("user_id", data.user_id)
+      .eq("role", "shop_admin");
+
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// ─── Activate Shop Admin (Super Admin only) ────────────────
+export const activateShopAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { user_id: string; months?: number }) =>
+    z.object({ user_id: z.string().uuid(), months: z.number().int().min(1).default(12) }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: roles } = await context.supabase.from("user_roles").select("role").eq("user_id", context.userId);
+    if (!(roles ?? []).some((r) => r.role === "super_admin")) throw new Error("Forbidden");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const future = new Date();
+    future.setMonth(future.getMonth() + data.months);
+
+    const { error } = await supabaseAdmin
+      .from("user_roles")
+      .update({ expires_at: future.toISOString() })
+      .eq("user_id", data.user_id)
+      .eq("role", "shop_admin");
+
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 // ──────────────────────────────────────────────────────────────
