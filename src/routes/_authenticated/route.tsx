@@ -21,7 +21,7 @@ import {
   History,
   BookOpen,
   ShieldAlert,
-  DollarSign, // <-- added for Subscriptions
+  DollarSign,
 } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,22 @@ export const Route = createFileRoute("/_authenticated")({
   beforeLoad: async () => {
     const { data } = await supabase.auth.getUser();
     if (!data.user) throw redirect({ to: "/auth" });
+
+    // ✅ Check expiry
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("expires_at, role")
+      .eq("user_id", data.user.id)
+      .single();
+
+    if (roleData?.role !== "super_admin") {
+      const expired = !roleData?.expires_at || new Date(roleData.expires_at) < new Date();
+      if (expired) {
+        await supabase.auth.signOut();
+        throw redirect({ to: "/auth" });
+      }
+    }
+
     return { userId: data.user.id };
   },
   component: Layout,
@@ -70,7 +86,7 @@ function Layout() {
     ? [
         { to: "/dashboard", label: "platformDashboard", icon: LayoutDashboard },
         { to: "/shops", label: "shops", icon: Building2 },
-        { to: "/subscriptions", label: "Subscriptions", icon: DollarSign }, // <-- Added
+        { to: "/subscriptions", label: "Subscriptions", icon: DollarSign },
         { to: "/audit", label: "auditLog", icon: History },
         { to: "/errors", label: "errorMonitoring", icon: ShieldAlert },
         { to: "/help", label: "helpCenter", icon: BookOpen },
@@ -182,7 +198,6 @@ function Layout() {
           >
             <LogOut className="mr-2 h-4 w-4" /> {t("signOut")}
           </Button>
-          {/* Legal links in sidebar footer */}
           <div className="flex justify-center gap-3 text-[10px] text-white/30 hover:text-white/60 transition">
             <Link to="/legal/terms" className="hover:underline">Terms</Link>
             <Link to="/legal/privacy" className="hover:underline">Privacy</Link>
