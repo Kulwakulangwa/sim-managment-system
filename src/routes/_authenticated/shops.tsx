@@ -1,3 +1,4 @@
+// src/routes/_authenticated/shops.tsx
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -11,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Pause, Play, Trash2, UserPlus, KeyRound, CalendarClock } from "lucide-react";
+import { Plus, Pause, Play, Trash2, UserPlus, KeyRound, CalendarClock, Ban, CheckCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { createShop, updateShop, deleteShop, createShopAdmin, resetShopAdminPassword, extendShopAdminExpiration } from "@/lib/admin.functions";
@@ -25,7 +26,6 @@ function ShopsPage() {
   const qc = useQueryClient();
   const { theme } = useTheme();
 
-  // Role detection
   const { data: myRole } = useMyRole();
   const { data: user } = useQuery({
     queryKey: ["authUser"],
@@ -50,7 +50,7 @@ function ShopsPage() {
     },
   });
 
-  // Fetch shop admins with expiration and profile (including email)
+  // Fetch shop admins with profiles
   const { data: shopAdmins = [] } = useQuery({
     queryKey: ["shop-admins"],
     enabled: !!isSuper,
@@ -77,15 +77,9 @@ function ShopsPage() {
   const [adminOpen, setAdminOpen] = useState<string | null>(null);
   const [adminForm, setAdminForm] = useState({ email: "", password: "", full_name: "", phone: "", validity_months: 12 });
 
-  // Reset password state
   const [resetOpen, setResetOpen] = useState(false);
   const [resetUserId, setResetUserId] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState("");
-
-  // Extend expiration state
-  const [extendOpen, setExtendOpen] = useState(false);
-  const [extendUserId, setExtendUserId] = useState<string | null>(null);
-  const [extendMonths, setExtendMonths] = useState(12);
 
   const add = useMutation({
     mutationFn: async () => createShopFn({ data: shopForm }),
@@ -116,7 +110,6 @@ function ShopsPage() {
 
   const addAdmin = useMutation({
     mutationFn: async (shop_id: string) => {
-      // Pass validity_months to the server function
       return createAdminFn({ data: { shop_id, ...adminForm } });
     },
     onSuccess: () => {
@@ -143,18 +136,57 @@ function ShopsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const extendExpiry = useMutation({
-    mutationFn: async () => {
-      if (!extendUserId) throw new Error("No user selected");
-      if (extendMonths < 1) throw new Error("Must add at least 1 month");
-      await extendExpiryFn({ data: { user_id: extendUserId, additional_months: extendMonths } });
+  // Suspend admin: set expires_at to past
+  const suspendAdmin = useMutation({
+    mutationFn: async (userId: string) => {
+      const past = new Date();
+      past.setDate(past.getDate() - 1);
+      const { error } = await supabase
+        .from("user_roles")
+        .update({ expires_at: past.toISOString() })
+        .eq("user_id", userId)
+        .eq("role", "shop_admin");
+      if (error) throw error;
     },
     onSuccess: () => {
-      toast.success(`Expiration extended by ${extendMonths} months`);
       qc.invalidateQueries({ queryKey: ["shop-admins"] });
-      setExtendOpen(false);
-      setExtendMonths(12);
-      setExtendUserId(null);
+      toast.success("Admin suspended");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Activate admin: set expires_at to 1 year from now
+  const activateAdmin = useMutation({
+    mutationFn: async (userId: string) => {
+      const future = new Date();
+      future.setFullYear(future.getFullYear() + 1);
+      const { error } = await supabase
+        .from("user_roles")
+        .update({ expires_at: future.toISOString() })
+        .eq("user_id", userId)
+        .eq("role", "shop_admin");
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["shop-admins"] });
+      toast.success("Admin activated");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Delete admin: remove from user_roles
+  const deleteAdmin = useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase
+        .from("user_roles")
+        .delete()
+        .eq("user_id", userId)
+        .eq("role", "shop_admin");
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["shop-admins"] });
+      toast.success("Admin removed");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -258,6 +290,7 @@ function ShopsPage() {
             {shops.map((s) => {
               const admin = shopAdmins.find((a) => a.shop_id === s.id);
               const isExpired = admin && admin.expires_at && new Date(admin.expires_at) < new Date();
+              const isActive = admin && admin.expires_at && new Date(admin.expires_at) > new Date();
               return (
                 <TableRow key={s.id} className={theme === "dark" ? "hover:bg-slate-700/50" : "hover:bg-muted/50"}>
                   <TableCell className={cn("font-medium", theme === "dark" ? "text-slate-200" : "")}>{s.name}</TableCell>
@@ -280,18 +313,15 @@ function ShopsPage() {
                               ({admin.profiles.email})
                             </span>
                           )}
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {admin.expires_at ? (
-                            <span className={cn(
-                              "text-xs",
-                              isExpired ? "text-red-500 font-medium" : "text-muted-foreground"
-                            )}>
-                              {isExpired ? "Expired" : `Expires: ${new Date(admin.expires_at).toLocaleDateString()}`}
-                            </span>
+                          {isExpired ? (
+                            <Badge variant="destructive">Expired</Badge>
+                          ) : isActive ? (
+                            <Badge variant="secondary">Active</Badge>
                           ) : (
-                            <span className="text-xs text-muted-foreground">No expiry</span>
+                            <Badge variant="outline">No expiry</Badge>
                           )}
+                        </div>
+                        <div className="flex items-center gap-1 flex-wrap">
                           <Button
                             size="sm"
                             variant="outline"
@@ -304,17 +334,42 @@ function ShopsPage() {
                             <KeyRound className="h-3 w-3 mr-1" />
                             Reset
                           </Button>
+                          {isExpired ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => activateAdmin.mutate(admin.user_id)}
+                              disabled={activateAdmin.isPending}
+                              className="h-7 px-2 text-xs text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                            >
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Activate
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => suspendAdmin.mutate(admin.user_id)}
+                              disabled={suspendAdmin.isPending}
+                              className="h-7 px-2 text-xs text-amber-600 border-amber-200 hover:bg-amber-50"
+                            >
+                              <Ban className="h-3 w-3 mr-1" />
+                              Suspend
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => {
-                              setExtendUserId(admin.user_id);
-                              setExtendOpen(true);
+                              if (confirm("Delete this admin? This cannot be undone.")) {
+                                deleteAdmin.mutate(admin.user_id);
+                              }
                             }}
-                            className="h-7 px-2 text-xs"
+                            disabled={deleteAdmin.isPending}
+                            className="h-7 px-2 text-xs text-red-600 border-red-200 hover:bg-red-50"
                           >
-                            <CalendarClock className="h-3 w-3 mr-1" />
-                            Extend
+                            <Trash2 className="h-3 w-3 mr-1" />
+                            Remove
                           </Button>
                         </div>
                       </div>
@@ -442,37 +497,6 @@ function ShopsPage() {
               className="bg-gradient-to-r from-pink-500 to-rose-500 text-white"
             >
               {resetPassword.isPending ? "Resetting..." : "Reset Password"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Extend Expiration Dialog */}
-      <Dialog open={extendOpen} onOpenChange={(v) => setExtendOpen(v)}>
-        <DialogContent className={theme === "dark" ? "bg-slate-800 border-slate-700 text-white" : ""}>
-          <DialogHeader>
-            <DialogTitle className={theme === "dark" ? "text-white" : ""}>Extend Shop Admin Expiration</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <Label className={theme === "dark" ? "text-slate-300" : ""}>Additional Months</Label>
-            <Input
-              type="number"
-              value={extendMonths}
-              onChange={(e) => setExtendMonths(Number(e.target.value))}
-              min={1}
-              className={theme === "dark" ? "border-slate-700 bg-slate-900 text-white" : ""}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setExtendOpen(false)} className={theme === "dark" ? "text-slate-300 hover:text-white hover:bg-slate-700" : ""}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => extendExpiry.mutate()}
-              disabled={extendExpiry.isPending}
-              className="bg-gradient-to-r from-pink-500 to-rose-500 text-white"
-            >
-              {extendExpiry.isPending ? "Extending..." : "Extend"}
             </Button>
           </DialogFooter>
         </DialogContent>
