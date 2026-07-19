@@ -146,28 +146,42 @@ function ShopsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  // Suspend admin using server function
+  // Suspend admin using server function with logging
   const suspendAdmin = useMutation({
     mutationFn: async (userId: string) => {
-      await suspendAdminFn({ data: { user_id: userId } });
+      console.log("[suspendAdmin] Calling suspendShopAdmin for user:", userId);
+      const result = await suspendAdminFn({ data: { user_id: userId } });
+      console.log("[suspendAdmin] Server function result:", result);
+      return result;
     },
     onSuccess: () => {
+      console.log("[suspendAdmin] Success – invalidating queries");
       qc.invalidateQueries({ queryKey: ["shop-admins"] });
       toast.success("Admin suspended");
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      console.error("[suspendAdmin] Error:", e);
+      toast.error(e.message);
+    },
   });
 
-  // Activate admin using server function
+  // Activate admin using server function with logging
   const activateAdmin = useMutation({
     mutationFn: async (userId: string) => {
-      await activateAdminFn({ data: { user_id: userId } });
+      console.log("[activateAdmin] Calling activateShopAdmin for user:", userId);
+      const result = await activateAdminFn({ data: { user_id: userId } });
+      console.log("[activateAdmin] Server function result:", result);
+      return result;
     },
     onSuccess: () => {
+      console.log("[activateAdmin] Success – invalidating queries");
       qc.invalidateQueries({ queryKey: ["shop-admins"] });
       toast.success("Admin activated");
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      console.error("[activateAdmin] Error:", e);
+      toast.error(e.message);
+    },
   });
 
   // Delete admin: remove from user_roles
