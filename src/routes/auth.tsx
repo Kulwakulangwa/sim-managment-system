@@ -33,20 +33,54 @@ function AuthPage() {
       return;
     }
 
-    // ✅ Check if the user's account has expired
+    // ─── Access control check ──────────────────────────────────
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const { data: roleData } = await supabase
+      const { data: userRole, error: roleError } = await supabase
         .from("user_roles")
-        .select("expires_at, role")
+        .select("role, shop_id, expires_at")
         .eq("user_id", user.id)
         .single();
 
-      if (roleData?.role !== "super_admin") {
-        const expired = !roleData?.expires_at || new Date(roleData.expires_at) < new Date();
-        if (expired) {
+      console.log("[Login] userRole:", userRole);
+      console.log("[Login] roleError:", roleError);
+
+      // Super admin always allowed
+      if (userRole?.role === "super_admin") {
+        console.log("[Login] Super admin – skipping checks");
+      } else {
+        let blocked = false;
+        let blockMessage = "";
+
+        if (userRole?.role === "shop_admin") {
+          // Shop admin: check own expiry
+          const expired = !userRole?.expires_at || new Date(userRole.expires_at) < new Date();
+          if (expired) {
+            blocked = true;
+            blockMessage = "Your account has expired. Please contact your administrator.";
+          }
+        } else {
+          // Staff (cashier, salesperson, technician): check their shop_admin
+          if (userRole?.shop_id) {
+            const { data: shopAdmin, error: saError } = await supabase
+              .from("user_roles")
+              .select("expires_at")
+              .eq("shop_id", userRole.shop_id)
+              .eq("role", "shop_admin")
+              .single();
+
+            console.log("[Login] Shop admin for staff:", shopAdmin, saError);
+            const shopAdminExpired = !shopAdmin?.expires_at || new Date(shopAdmin.expires_at) < new Date();
+            if (shopAdminExpired) {
+              blocked = true;
+              blockMessage = "Your shop's admin account has been suspended. Please contact your administrator.";
+            }
+          }
+        }
+
+        if (blocked) {
           await supabase.auth.signOut();
-          setError("Your account has expired. Please contact your administrator.");
+          setError(blockMessage);
           setLoading(false);
           return;
         }
@@ -65,7 +99,7 @@ function AuthPage() {
       "flex min-h-screen flex-col md:flex-row",
       theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
     )}>
-      {/* LEFT PANEL */}
+      {/* LEFT PANEL – Background image + brand */}
       <div className="relative hidden flex-1 flex-col items-center justify-between text-white md:flex lg:flex-[1.15]">
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -74,6 +108,7 @@ function AuthPage() {
         <div className="absolute inset-0 bg-[#0B1221]/60" />
 
         <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-4">
+          {/* Pink "D" logo */}
           <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-500 to-rose-500 shadow-lg shadow-pink-500/30">
             <span className="font-serif text-4xl font-medium text-white">D</span>
           </div>
@@ -96,7 +131,7 @@ function AuthPage() {
         </div>
       </div>
 
-      {/* RIGHT PANEL */}
+      {/* RIGHT PANEL – Sign in form with dark mode */}
       <div className={cn(
         "flex flex-1 flex-col px-6 py-8 md:px-12 md:py-12",
         theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
