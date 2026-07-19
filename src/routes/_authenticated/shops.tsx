@@ -50,7 +50,7 @@ function ShopsPage() {
     },
   });
 
-  // Fetch shop admins with expiration
+  // Fetch shop admins with expiration and profile (including email)
   const { data: shopAdmins = [] } = useQuery({
     queryKey: ["shop-admins"],
     enabled: !!isSuper,
@@ -116,7 +116,7 @@ function ShopsPage() {
 
   const addAdmin = useMutation({
     mutationFn: async (shop_id: string) => {
-      // The server function now expects a `validity_months` field
+      // Pass validity_months to the server function
       return createAdminFn({ data: { shop_id, ...adminForm } });
     },
     onSuccess: () => {
@@ -270,44 +270,53 @@ function ShopsPage() {
                   </TableCell>
                   <TableCell>
                     {admin ? (
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={theme === "dark" ? "text-slate-200" : ""}>
-                          {admin.profiles?.full_name || admin.profiles?.email || "Admin"}
-                        </span>
-                        {admin.expires_at ? (
-                          <span className={cn(
-                            "text-xs",
-                            isExpired ? "text-red-500 font-medium" : "text-muted-foreground"
-                          )}>
-                            {isExpired ? "Expired" : `Expires: ${new Date(admin.expires_at).toLocaleDateString()}`}
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={theme === "dark" ? "text-slate-200" : ""}>
+                            {admin.profiles?.full_name || "Admin"}
                           </span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">No expiry</span>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setResetUserId(admin.user_id);
-                            setResetOpen(true);
-                          }}
-                          className="h-7 px-2 text-xs"
-                        >
-                          <KeyRound className="h-3 w-3 mr-1" />
-                          Reset
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setExtendUserId(admin.user_id);
-                            setExtendOpen(true);
-                          }}
-                          className="h-7 px-2 text-xs"
-                        >
-                          <CalendarClock className="h-3 w-3 mr-1" />
-                          Extend
-                        </Button>
+                          {admin.profiles?.email && (
+                            <span className="text-xs text-muted-foreground">
+                              ({admin.profiles.email})
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {admin.expires_at ? (
+                            <span className={cn(
+                              "text-xs",
+                              isExpired ? "text-red-500 font-medium" : "text-muted-foreground"
+                            )}>
+                              {isExpired ? "Expired" : `Expires: ${new Date(admin.expires_at).toLocaleDateString()}`}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">No expiry</span>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setResetUserId(admin.user_id);
+                              setResetOpen(true);
+                            }}
+                            className="h-7 px-2 text-xs"
+                          >
+                            <KeyRound className="h-3 w-3 mr-1" />
+                            Reset
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setExtendUserId(admin.user_id);
+                              setExtendOpen(true);
+                            }}
+                            className="h-7 px-2 text-xs"
+                          >
+                            <CalendarClock className="h-3 w-3 mr-1" />
+                            Extend
+                          </Button>
+                        </div>
                       </div>
                     ) : (
                       <span className="text-muted-foreground text-sm">No admin</span>
