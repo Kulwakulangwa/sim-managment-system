@@ -33,7 +33,7 @@ function HomePage() {
       return;
     }
 
-    // ─── Check access for all roles ──────────────────────────
+    // ─── Access control check ──────────────────────────────────
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const { data: userRole, error: roleError } = await supabase
@@ -45,7 +45,6 @@ function HomePage() {
       console.log("[Login] userRole:", userRole);
       console.log("[Login] roleError:", roleError);
 
-      // Super admin always allowed
       if (userRole?.role === "super_admin") {
         console.log("[Login] Super admin – skipping checks");
       } else {
@@ -53,14 +52,12 @@ function HomePage() {
         let blockMessage = "";
 
         if (userRole?.role === "shop_admin") {
-          // Shop admin: check their own expiry
           const expired = !userRole?.expires_at || new Date(userRole.expires_at) < new Date();
           if (expired) {
             blocked = true;
             blockMessage = "Your account has expired. Please contact your administrator.";
           }
         } else {
-          // Staff (cashier, salesperson, technician): check their shop_admin
           if (userRole?.shop_id) {
             const { data: shopAdmin, error: saError } = await supabase
               .from("user_roles")
@@ -99,7 +96,7 @@ function HomePage() {
       "flex min-h-screen flex-col md:flex-row",
       theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
     )}>
-      {/* LEFT PANEL – same */}
+      {/* LEFT PANEL – Background image + brand */}
       <div className="relative hidden flex-1 flex-col items-center justify-between text-white md:flex lg:flex-[1.15]">
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -119,33 +116,48 @@ function HomePage() {
           </div>
         </div>
 
-        <div className="relative z-10 flex w-full items-center justify-between border-t border-white/10 px-8 py-4">
-          <span className="text-xs text-white/50">© royotechtz</span>
-          <div className="flex items-center gap-3">
-            <button className="text-white/40 transition hover:text-white/80"><Link2 className="h-4 w-4" /></button>
-            <button className="text-white/40 transition hover:text-white/80"><Linkedin className="h-4 w-4" /></button>
-            <button className="text-white/40 transition hover:text-white/80"><Share2 className="h-4 w-4" /></button>
-            <button className="text-white/40 transition hover:text-white/80"><Download className="h-4 w-4" /></button>
+        <div className="relative z-10 flex w-full flex-col items-center justify-between border-t border-white/10 px-8 py-4">
+          <div className="flex w-full items-center justify-between">
+            <span className="text-xs text-white/50">© royotechtz</span>
+            <div className="flex items-center gap-3">
+              <button className="text-white/40 transition hover:text-white/80"><Link2 className="h-4 w-4" /></button>
+              <button className="text-white/40 transition hover:text-white/80"><Linkedin className="h-4 w-4" /></button>
+              <button className="text-white/40 transition hover:text-white/80"><Share2 className="h-4 w-4" /></button>
+              <button className="text-white/40 transition hover:text-white/80"><Download className="h-4 w-4" /></button>
+            </div>
+          </div>
+          {/* 🔹 New contact line */}
+          <div className="mt-1 text-center text-[10px] text-white/40">
+            For an account or any help contact <span className="text-white/60">0743006667</span>
           </div>
         </div>
       </div>
 
-      {/* RIGHT PANEL – login form */}
+      {/* RIGHT PANEL – Login form */}
       <div className={cn(
         "flex flex-1 flex-col px-6 py-8 md:px-12 md:py-12",
         theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
       )}>
         <div className="ml-auto font-mono text-xs text-[#8b93a3] dark:text-slate-500">
-          <span className={cn("font-medium", theme === "dark" ? "text-white" : "text-[#0B1221]")}>EN</span> · SW
+          <span className={cn(
+            "font-medium",
+            theme === "dark" ? "text-white" : "text-[#0B1221]"
+          )}>EN</span> · SW
         </div>
 
         <div className="mx-auto mt-8 w-full max-w-sm flex-1 md:mt-20">
-          <h2 className={cn("font-serif text-2xl font-medium md:text-3xl", theme === "dark" ? "text-white" : "text-[#0B1221]")}>Sign in</h2>
+          <h2 className={cn(
+            "font-serif text-2xl font-medium md:text-3xl",
+            theme === "dark" ? "text-white" : "text-[#0B1221]"
+          )}>Sign in</h2>
           <p className="mt-1 text-sm text-[#6b7280] dark:text-slate-400">Phone Shop Management</p>
 
           <form onSubmit={handleSignIn} className="mt-8 space-y-5">
             <div>
-              <label htmlFor="email" className={cn("block text-xs font-medium", theme === "dark" ? "text-slate-300" : "text-[#0B1221]")}>Email</label>
+              <label htmlFor="email" className={cn(
+                "block text-xs font-medium",
+                theme === "dark" ? "text-slate-300" : "text-[#0B1221]"
+              )}>Email</label>
               <input
                 id="email"
                 type="email"
@@ -164,7 +176,10 @@ function HomePage() {
             </div>
 
             <div>
-              <label htmlFor="password" className={cn("block text-xs font-medium", theme === "dark" ? "text-slate-300" : "text-[#0B1221]")}>Password</label>
+              <label htmlFor="password" className={cn(
+                "block text-xs font-medium",
+                theme === "dark" ? "text-slate-300" : "text-[#0B1221]"
+              )}>Password</label>
               <input
                 id="password"
                 type="password"
@@ -197,7 +212,9 @@ function HomePage() {
             </button>
           </form>
 
-          <a href="#" className="mt-4 block text-center text-sm text-[#6b7280] hover:text-[#0B1221] dark:text-slate-400 dark:hover:text-white">Forgot password?</a>
+          <a href="#" className="mt-4 block text-center text-sm text-[#6b7280] hover:text-[#0B1221] dark:text-slate-400 dark:hover:text-white">
+            Forgot password?
+          </a>
 
           <div className="mt-6 text-center text-xs text-muted-foreground dark:text-slate-500">
             <Link to="/legal/terms" className="hover:underline">Terms</Link> · <Link to="/legal/privacy" className="hover:underline">Privacy</Link>
