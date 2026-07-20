@@ -116,7 +116,8 @@ function POS() {
         // Winga mode: require agent selection
         if (!agentId || agentId === "none") throw new Error("Please select an agent");
         agentIdValue = agentId;
-        paymentTypeValue = "winga";
+        // Use 'cash' as payment type for winga (since enum doesn't have 'winga')
+        paymentTypeValue = 'cash';
         // No customer for winga
       } else {
         // Normal mode: customer handling
@@ -160,7 +161,8 @@ function POS() {
         });
       }
 
-      if (paymentType === "installment") {
+      // Installments only allowed for non‑winga sales
+      if (!isWinga && paymentType === "installment") {
         const months = Math.max(1, Number(installmentMonths || 1));
         const down = Number(downPayment || 0);
         const { data: plan, error: pe } = await supabase.from("installment_plans").insert({
@@ -218,6 +220,7 @@ function POS() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
+        {/* Item selection – unchanged */}
         <Card className={cn(
           "lg:col-span-2 border-0 shadow-md backdrop-blur-sm",
           theme === "dark" ? "bg-slate-800/90" : "bg-white/90"
@@ -300,6 +303,7 @@ function POS() {
           </CardContent>
         </Card>
 
+        {/* Sale form – with Winga toggle */}
         <Card className={cn(
           "border-0 shadow-md backdrop-blur-sm",
           theme === "dark" ? "bg-slate-800/90" : "bg-white/90"
@@ -527,30 +531,32 @@ function POS() {
                   )}
                 </div>
 
-                <div>
-                  <Label className={cn(
-                    "text-sm font-medium",
-                    theme === "dark" ? "text-slate-300" : "text-slate-700"
-                  )}>
-                    {t("paymentType")}
-                  </Label>
-                  <Select value={paymentType} onValueChange={(v) => setPaymentType(v as "cash" | "installment")}>
-                    <SelectTrigger className={cn(
-                      "mt-1 focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500",
-                      theme === "dark"
-                        ? "border-slate-700 bg-slate-900 text-white"
-                        : "border-slate-200"
+                {!isWinga && (
+                  <div>
+                    <Label className={cn(
+                      "text-sm font-medium",
+                      theme === "dark" ? "text-slate-300" : "text-slate-700"
                     )}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">{t("cash")}</SelectItem>
-                      <SelectItem value="installment">{t("installment")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                      {t("paymentType")}
+                    </Label>
+                    <Select value={paymentType} onValueChange={(v) => setPaymentType(v as "cash" | "installment")}>
+                      <SelectTrigger className={cn(
+                        "mt-1 focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500",
+                        theme === "dark"
+                          ? "border-slate-700 bg-slate-900 text-white"
+                          : "border-slate-200"
+                      )}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cash">{t("cash")}</SelectItem>
+                        <SelectItem value="installment">{t("installment")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
-                {paymentType === "installment" && (
+                {!isWinga && paymentType === "installment" && (
                   <div className={cn(
                     "space-y-2 p-3 rounded-lg border",
                     theme === "dark"
