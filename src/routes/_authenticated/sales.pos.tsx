@@ -1,4 +1,3 @@
-// src/routes/_authenticated/sales/pos.tsx
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,7 +35,6 @@ function POS() {
   const [warrantyMonths, setWarrantyMonths] = useState("0");
   const [installmentMonths, setInstallmentMonths] = useState("3");
   const [downPayment, setDownPayment] = useState("0");
-  const [imei, setImei] = useState("");
 
   const { data: items = [] } = useQuery({
     queryKey: ["inventory-pos"],
@@ -53,7 +51,7 @@ function POS() {
 
   const filtered = useMemo(() => items.filter((i) => {
     const s = q.toLowerCase();
-    return !s || `${i.brand ?? ""} ${i.model ?? ""} ${i.name ?? ""}`.toLowerCase().includes(s);
+    return !s || `${i.brand ?? ""} ${i.model ?? ""} ${i.name ?? ""} ${i.imei ?? ""}`.toLowerCase().includes(s);
   }), [items, q]);
 
   const selected = items.find((i) => i.id === selectedId) ?? null;
@@ -64,7 +62,6 @@ function POS() {
   const handleSelectItem = (id: string) => {
     setSelectedId(id);
     setQty(1);
-    setImei("");
   };
 
   const complete = useMutation({
@@ -73,15 +70,15 @@ function POS() {
       if (qty < 1 || qty > selected.quantity) throw new Error("Invalid quantity");
       if (!shopId) throw new Error("No shop context");
 
-      if (selected.item_type === "phone" && !imei.trim()) {
-        throw new Error("IMEI is required for phone sales");
-      }
-
-      if (selected.item_type === "phone" && imei.trim()) {
+      // For phones, the IMEI is taken from the selected item itself.
+      // We don't need manual input.
+      if (selected.item_type === "phone") {
+        if (!selected.imei) throw new Error("This phone has no IMEI assigned");
+        // Check if already sold (should not happen since we only show items with quantity > 0)
         const { data: existing } = await supabase
           .from("sales")
           .select("id")
-          .eq("imei", imei.trim())
+          .eq("imei", selected.imei)
           .maybeSingle();
         if (existing) {
           throw new Error("This IMEI has already been sold");
@@ -110,7 +107,7 @@ function POS() {
         payment_type: paymentType,
         sold_by: userRes.user?.id ?? null,
         shop_id: shopId,
-        imei: selected.item_type === "phone" ? imei.trim() : null,
+        imei: selected.item_type === "phone" ? selected.imei : null,
       }).select("id, sale_date").single();
       if (se) throw se;
 
@@ -207,7 +204,7 @@ function POS() {
                     ? "border-slate-700 bg-slate-900 text-white placeholder-slate-400"
                     : "border-slate-200"
                 )}
-                placeholder="Search by brand, model, or name"
+                placeholder="Search by brand, model, name, or IMEI"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
               />
@@ -251,6 +248,7 @@ function POS() {
                       <div className="flex items-center gap-2 text-xs text-slate-500">
                         <span>Stock: {i.quantity}</span>
                         {i.condition && <span>· {i.condition}</span>}
+                        {i.imei && <span className="font-mono">· {i.imei}</span>}
                       </div>
                     </div>
                     <p className={cn(
@@ -308,34 +306,15 @@ function POS() {
                         {selected.condition}
                       </span>
                     )}
+                    {/* Show IMEI if phone */}
+                    {selected.item_type === "phone" && selected.imei && (
+                      <p className="text-xs font-mono text-slate-500 mt-1">IMEI: {selected.imei}</p>
+                    )}
                   </div>
                 </div>
 
-                {selected.item_type === "phone" && (
-                  <div>
-                    <Label className={cn(
-                      "text-sm font-medium flex items-center gap-1",
-                      theme === "dark" ? "text-slate-300" : "text-slate-700"
-                    )}>
-                      IMEI <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      value={imei}
-                      onChange={(e) => setImei(e.target.value)}
-                      placeholder="Enter IMEI number"
-                      className={cn(
-                        "mt-1 focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500",
-                        theme === "dark"
-                          ? "border-slate-700 bg-slate-900 text-white placeholder-slate-400"
-                          : "border-slate-200",
-                        !imei.trim() && "border-red-300"
-                      )}
-                    />
-                    {!imei.trim() && (
-                      <p className="text-xs text-red-500 mt-1">IMEI is required for phone sales</p>
-                    )}
-                  </div>
-                )}
+                {/* IMEI field – hidden for phones, we already show it above */}
+                {/* We removed the manual IMEI input entirely */}
 
                 <div>
                   <Label className={cn(
@@ -577,7 +556,7 @@ function POS() {
                 <Button
                   className={`w-full ${BUTTON_GRADIENT} text-white font-medium h-12 text-base`}
                   onClick={() => complete.mutate()}
-                  disabled={complete.isPending || (selected.item_type === "phone" && !imei.trim())}
+                  disabled={complete.isPending || (selected.item_type === "phone" && !selected.imei)}
                 >
                   {complete.isPending ? (
                     <span className="flex items-center gap-2">
