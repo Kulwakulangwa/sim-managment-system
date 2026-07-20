@@ -51,14 +51,17 @@ function WingaPage() {
         .select(`
           *,
           agents(name, phone),
-          inventory_items(brand, model, name)
+          inventory_items(brand, model, name, item_type)
         `)
         .eq("shop_id", shopId)
         .not("agent_id", "is", null)
         .eq("winga_settled", false)
         .eq("winga_returned", false)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
+        .order("sale_date", { ascending: false }); // ✅ use sale_date instead of created_at
+      if (error) {
+        console.error("Winga query error:", error);
+        throw error;
+      }
       return data;
     },
   });
