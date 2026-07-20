@@ -129,6 +129,19 @@ function ReportsPage() {
         .select("*")
         .order("quantity");
 
+      // ── Winga revenue (settled winga sales) ──
+      let wingaQuery = supabase
+        .from("sales")
+        .select("sell_price, discount, quantity")
+        .eq("winga_settled", true);
+      if (start) wingaQuery = wingaQuery.gte("sale_date", start);
+      if (end) wingaQuery = wingaQuery.lte("sale_date", end);
+      const wingaRes = await wingaQuery;
+      const wingaRevenue = (wingaRes.data ?? []).reduce(
+        (s, r) => s + (Number(r.sell_price) - Number(r.discount)) * Number(r.quantity),
+        0
+      );
+
       const sales = salesRes.data ?? [];
       const totalRev = sales.reduce((s, r) => s + (Number(r.sell_price) - Number(r.discount)) * Number(r.quantity), 0);
       const totalProfit = sales.reduce((s, r) => s + Number(r.profit ?? 0), 0);
@@ -157,6 +170,7 @@ function ReportsPage() {
         best,
         inv: invRes.data ?? [],
         repairIncome,
+        wingaRevenue,
       };
     },
   });
@@ -164,6 +178,7 @@ function ReportsPage() {
   const stats = [
     { label: "Sales Revenue", value: formatTZS(data?.totalRev ?? 0), icon: ShoppingCart, badge: "ember" },
     { label: "Repair Income", value: formatTZS(data?.repairIncome ?? 0), icon: Wrench, badge: "pink" },
+    { label: "Winga Revenue", value: formatTZS(data?.wingaRevenue ?? 0), icon: DollarSign, badge: "crimson" },
     { label: "Expenses", value: formatTZS(data?.totalExp ?? 0), icon: Receipt, badge: "wine" },
     { label: "Net Profit", value: formatTZS(data?.netProfit ?? 0), icon: DollarSign, badge: "slate" },
   ];
@@ -226,7 +241,7 @@ function ReportsPage() {
       </div>
 
       {/* Stats cards */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
         {stats.map((s) => (
           <StatCard key={s.label} {...s} />
         ))}
