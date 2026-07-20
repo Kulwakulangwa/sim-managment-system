@@ -32,7 +32,8 @@ export const Route = createFileRoute("/_authenticated/inventory")({
 
     const role = roleData?.role;
     const isSuperAdminByEmail = user.email === "kulwakulangwa@gmail.com";
-    const allowedRoles = ["super_admin", "shop_admin"];
+    // ✅ Allow cashier to view inventory
+    const allowedRoles = ["super_admin", "shop_admin", "cashier"];
     const isAllowed = allowedRoles.includes(role ?? "") || isSuperAdminByEmail;
 
     if (!isAllowed) {
