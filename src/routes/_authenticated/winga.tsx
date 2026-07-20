@@ -57,7 +57,7 @@ function WingaPage() {
         .not("agent_id", "is", null)
         .eq("winga_settled", false)
         .eq("winga_returned", false)
-        .order("sale_date", { ascending: false }); // ✅ use sale_date instead of created_at
+        .order("sale_date", { ascending: false });
       if (error) {
         console.error("Winga query error:", error);
         throw error;
@@ -165,6 +165,7 @@ function WingaPage() {
             <TableRow>
               <TableHead className={theme === "dark" ? "text-slate-300" : ""}>Date</TableHead>
               <TableHead className={theme === "dark" ? "text-slate-300" : ""}>Item</TableHead>
+              <TableHead className={theme === "dark" ? "text-slate-300" : ""}>IMEI</TableHead>  {/* ✅ New column */}
               <TableHead className={theme === "dark" ? "text-slate-300" : ""}>Agent</TableHead>
               <TableHead className={cn("text-right", theme === "dark" ? "text-slate-300" : "")}>Amount</TableHead>
               <TableHead className={cn("text-right", theme === "dark" ? "text-slate-300" : "")}>Actions</TableHead>
@@ -173,7 +174,7 @@ function WingaPage() {
           <TableBody>
             {wingaSales.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className={cn("text-center py-6", theme === "dark" ? "text-slate-400" : "text-muted-foreground")}>
+                <TableCell colSpan={6} className={cn("text-center py-6", theme === "dark" ? "text-slate-400" : "text-muted-foreground")}>
                   No outstanding winga sales.
                 </TableCell>
               </TableRow>
@@ -192,6 +193,9 @@ function WingaPage() {
                   </TableCell>
                   <TableCell className={cn("font-medium", theme === "dark" ? "text-slate-200" : "")}>
                     {itemLabel}
+                  </TableCell>
+                  <TableCell className={cn("font-mono text-xs", theme === "dark" ? "text-slate-300" : "")}>
+                    {s.imei || "—"}
                   </TableCell>
                   <TableCell className={theme === "dark" ? "text-slate-300" : ""}>
                     {s.agents?.name || "Unknown"}
