@@ -142,9 +142,9 @@ function Layout() {
         { to: "/help", label: "helpCenter", icon: BookOpen },
       ]
     : [
-        { to: "/dashboard", label: "dashboard", icon: LayoutDashboard },
+        // 🔥 Only shop_admin and cashier see Dashboard
+        { to: "/dashboard", label: "dashboard", icon: LayoutDashboard, roles: ["shop_admin", "cashier"] },
         { to: "/sales", label: "sales", icon: ShoppingCart },
-        // 🔥 Allow cashier to see inventory
         { to: "/inventory", label: "inventory", icon: Boxes, roles: ["shop_admin", "cashier"] },
         { to: "/customers", label: "customers", icon: Users },
         { to: "/repairs", label: "repairs", icon: Wrench, roles: ["shop_admin", "technician"] },
