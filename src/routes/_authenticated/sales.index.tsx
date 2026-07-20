@@ -11,14 +11,19 @@ import { Plus, Download, ShoppingCart, TrendingUp, DollarSign } from "lucide-rea
 import { generateReceipt } from "@/lib/receipt";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
+import { useMyRole } from "@/hooks/use-role";
 
 export const Route = createFileRoute("/_authenticated/sales/")({ component: SalesPage });
 
 function SalesPage() {
   const { t } = useI18n();
   const { theme } = useTheme();
+  const { data: myRole } = useMyRole();
+  const role = myRole?.role;
+  // Hide profit for salespersons and technicians
+  const hideProfit = role === "salesperson" || role === "technician";
 
-  // 🔍 Fetch sales including IMEI
+  // Fetch sales including IMEI
   const { data: sales = [] } = useQuery({
     queryKey: ["sales-list"],
     queryFn: async () => {
@@ -45,13 +50,14 @@ function SalesPage() {
   const totalProfit = sales.reduce((sum, s) => sum + Number(s.profit ?? 0), 0);
   const totalItems = sales.reduce((sum, s) => sum + Number(s.quantity), 0);
 
+  // Conditionally include profit stat
   const stats = [
     { label: t("totalSales"), value: formatTZS(totalSales), icon: TrendingUp },
-    { label: t("totalProfit"), value: formatTZS(totalProfit), icon: DollarSign },
+    ...(hideProfit ? [] : [{ label: t("totalProfit"), value: formatTZS(totalProfit), icon: DollarSign }]),
     { label: t("itemsSold"), value: String(totalItems), icon: ShoppingCart },
   ];
 
-  // 🧾 Handle receipt generation – opens in new tab
+  // Receipt generation – opens in new tab
   const handleReceipt = (sale: any) => {
     const it = sale.inventory_items;
     const label = it ? (it.item_type === "phone" ? `${it.brand ?? ""} ${it.model ?? ""}`.trim() : (it.name ?? "")) : "—";
@@ -70,8 +76,8 @@ function SalesPage() {
       customerPhone: sale.customers?.phone,
       cashier: sale.profiles?.full_name,
       paymentType: sale.payment_type === "cash" ? t("cash") : t("installment"),
-      warrantyMonths: null, // not stored in sale, can be fetched from warranties table if needed
-      imei: sale.imei || null, // ✅ Pass IMEI
+      warrantyMonths: null,
+      imei: sale.imei || null,
     });
 
     if (pdfData) {
@@ -105,7 +111,7 @@ function SalesPage() {
             </Link>
           </div>
         </div>
-        {/* Quick stats */}
+        {/* Quick stats – profit hidden for salesperson/technician */}
         <div className="relative z-10 mt-4 flex flex-wrap gap-4 text-sm">
           {stats.map((s) => (
             <div key={s.label} className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 backdrop-blur-sm">
@@ -124,19 +130,22 @@ function SalesPage() {
               <TableRow>
                 <TableHead className="dark:text-slate-300">{t("date")}</TableHead>
                 <TableHead className="dark:text-slate-300">Item</TableHead>
-                <TableHead className="dark:text-slate-300">IMEI</TableHead> {/* ✅ New column */}
+                <TableHead className="dark:text-slate-300">IMEI</TableHead>
                 <TableHead className="dark:text-slate-300">{t("customer")}</TableHead>
                 <TableHead className="dark:text-slate-300">{t("paymentType")}</TableHead>
                 <TableHead className="text-right dark:text-slate-300">{t("quantity")}</TableHead>
                 <TableHead className="text-right dark:text-slate-300">{t("total")}</TableHead>
-                <TableHead className="text-right dark:text-slate-300">{t("profit")}</TableHead>
+                {/* Conditionally show Profit header */}
+                {!hideProfit && (
+                  <TableHead className="text-right dark:text-slate-300">{t("profit")}</TableHead>
+                )}
                 <TableHead className="dark:text-slate-300" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {sales.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground dark:text-slate-400 py-6">
+                  <TableCell colSpan={hideProfit ? 8 : 9} className="text-center text-muted-foreground dark:text-slate-400 py-6">
                     {t("empty")}
                   </TableCell>
                 </TableRow>
@@ -160,7 +169,10 @@ function SalesPage() {
                     </TableCell>
                     <TableCell className="text-right dark:text-slate-300">{s.quantity}</TableCell>
                     <TableCell className="text-right font-semibold dark:text-white">{formatTZS(total)}</TableCell>
-                    <TableCell className="text-right text-success dark:text-emerald-400">{formatTZS(Number(s.profit ?? 0))}</TableCell>
+                    {/* Conditionally show Profit value */}
+                    {!hideProfit && (
+                      <TableCell className="text-right text-success dark:text-emerald-400">{formatTZS(Number(s.profit ?? 0))}</TableCell>
+                    )}
                     <TableCell className="text-right">
                       <Button
                         size="sm"
