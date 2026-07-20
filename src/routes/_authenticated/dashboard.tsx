@@ -34,9 +34,11 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
       .single();
 
     const role = roleData?.role;
+    // Salespersons go to sales page
     if (role === "salesperson") {
       throw redirect({ to: "/sales" });
     }
+    // Technicians go to repairs page
     if (role === "technician") {
       throw redirect({ to: "/repairs" });
     }
