@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
@@ -23,6 +23,25 @@ import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
+  beforeLoad: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw redirect({ to: "/auth" });
+
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .single();
+
+    const role = roleData?.role;
+    if (role === "salesperson") {
+      throw redirect({ to: "/sales" });
+    }
+    if (role === "technician") {
+      throw redirect({ to: "/repairs" });
+    }
+    // For shop_admin, cashier, super_admin – allow dashboard
+  },
   component: Dashboard,
 });
 
