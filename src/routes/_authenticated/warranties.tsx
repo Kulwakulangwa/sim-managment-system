@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { ShieldCheck, AlertCircle, CheckCircle, FileText } from "lucide-react";
+import { ShieldCheck, AlertCircle, FileText, Check } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useTheme } from "@/lib/theme";
@@ -25,6 +25,7 @@ function WarrantiesPage() {
   const { theme } = useTheme();
   const [claim, setClaim] = useState<{ id: string; open: boolean; note: string }>({ id: "", open: false, note: "" });
 
+  // ─── Fetch warranties ──────────────────────────────────────
   const { data: rows = [] } = useQuery({
     queryKey: ["warranties"],
     queryFn: async () => (await supabase
@@ -33,20 +34,71 @@ function WarrantiesPage() {
       .order("start_date", { ascending: false })).data ?? [],
   });
 
-  // Calculate stats
+  // ─── Fetch claims ──────────────────────────────────────────
+  const { data: claims = [] } = useQuery({
+    queryKey: ["warranty-claims"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("warranty_claims")
+        .select(`
+          *,
+          warranties!inner(
+            id,
+            period_months,
+            sales!inner(
+              customers(full_name, phone),
+              inventory_items(brand, model, name, item_type)
+            )
+          )
+        `)
+        .eq("shop_id", shopId)
+        .order("claim_date", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // ─── Stats ──────────────────────────────────────────────────
   const total = rows.length;
   const active = rows.filter((w) => w.status === "active" && new Date(w.end_date) >= new Date()).length;
   const expired = rows.filter((w) => new Date(w.end_date) < new Date() && w.status === "active").length;
   const claimed = rows.filter((w) => w.status === "claimed").length;
 
+  // ─── File claim ─────────────────────────────────────────────
   const fileClaim = useMutation({
     mutationFn: async () => {
       if (!shopId) throw new Error("No shop context");
-      const { error } = await supabase.from("warranty_claims").insert({ warranty_id: claim.id, issue_description: claim.note, shop_id: shopId });
+      const { error } = await supabase.from("warranty_claims").insert({
+        warranty_id: claim.id,
+        issue_description: claim.note,
+        shop_id: shopId,
+        status: "pending",
+      });
       if (error) throw error;
       await supabase.from("warranties").update({ status: "claimed" }).eq("id", claim.id);
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["warranties"] }); setClaim({ id: "", open: false, note: "" }); toast.success(t("save")); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["warranties"] });
+      qc.invalidateQueries({ queryKey: ["warranty-claims"] });
+      setClaim({ id: "", open: false, note: "" });
+      toast.success("Claim filed");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // ─── Resolve claim ──────────────────────────────────────────
+  const resolveClaim = useMutation({
+    mutationFn: async (claimId: string) => {
+      const { error } = await supabase
+        .from("warranty_claims")
+        .update({ status: "resolved" })
+        .eq("id", claimId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["warranty-claims"] });
+      toast.success("Claim resolved");
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -57,7 +109,7 @@ function WarrantiesPage() {
       "space-y-6 -m-4 sm:-m-6 p-4 sm:p-6 min-h-full rounded-3xl",
       theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
     )}>
-      {/* Header with gradient */}
+      {/* ─── Header ────────────────────────────────────────────── */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white shadow-xl">
         <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-pink-500/20 blur-3xl" />
         <div className="absolute bottom-0 left-20 h-24 w-24 rounded-full bg-rose-500/20 blur-2xl" />
@@ -73,7 +125,7 @@ function WarrantiesPage() {
             </div>
           </div>
         </div>
-        {/* Quick stats row */}
+        {/* Quick stats */}
         <div className="relative z-10 mt-4 flex flex-wrap gap-4 text-sm">
           <div className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 backdrop-blur-sm">
             <ShieldCheck className="h-4 w-4 text-emerald-400" />
@@ -90,13 +142,14 @@ function WarrantiesPage() {
         </div>
       </div>
 
-      {/* Table card */}
+      {/* ─── Warranties Table ────────────────────────────────── */}
       <Card className={cn(
         "border-0 shadow-sm backdrop-blur-sm p-4",
         theme === "dark"
           ? "bg-slate-800/90 border-slate-700"
           : "bg-white/80"
       )}>
+        <h2 className="text-lg font-semibold mb-3 text-slate-800 dark:text-white">Warranties</h2>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -169,7 +222,98 @@ function WarrantiesPage() {
         </div>
       </Card>
 
-      {/* Claim dialog */}
+      {/* ─── Claims Table ────────────────────────────────────── */}
+      <Card className={cn(
+        "border-0 shadow-sm backdrop-blur-sm p-4",
+        theme === "dark"
+          ? "bg-slate-800/90 border-slate-700"
+          : "bg-white/80"
+      )}>
+        <h2 className="text-lg font-semibold mb-3 text-slate-800 dark:text-white">Filed Claims</h2>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className={theme === "dark" ? "text-slate-300" : ""}>Warranty</TableHead>
+                <TableHead className={theme === "dark" ? "text-slate-300" : ""}>Customer</TableHead>
+                <TableHead className={theme === "dark" ? "text-slate-300" : ""}>Item</TableHead>
+                <TableHead className={theme === "dark" ? "text-slate-300" : ""}>Issue</TableHead>
+                <TableHead className={theme === "dark" ? "text-slate-300" : ""}>Claimed</TableHead>
+                <TableHead className={theme === "dark" ? "text-slate-300" : ""}>Status</TableHead>
+                <TableHead className={theme === "dark" ? "text-slate-300" : ""} />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {claims.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} className={cn("text-center py-6", theme === "dark" ? "text-slate-400" : "text-muted-foreground")}>
+                    No claims filed yet.
+                  </TableCell>
+                </TableRow>
+              )}
+              {claims.map((c) => {
+                const warranty = c.warranties;
+                const sale = warranty?.sales;
+                const item = sale?.inventory_items;
+                const label = item ? (item.item_type === "phone" ? `${item.brand ?? ""} ${item.model ?? ""}`.trim() : item.name ?? "") : "—";
+                return (
+                  <TableRow key={c.id} className={theme === "dark" ? "hover:bg-slate-700/50" : "hover:bg-muted/50"}>
+                    <TableCell className={cn("text-xs", theme === "dark" ? "text-slate-300" : "")}>
+                      {warranty?.id?.slice(0, 8) || "—"}
+                    </TableCell>
+                    <TableCell className={theme === "dark" ? "text-slate-300" : ""}>
+                      {sale?.customers?.full_name || "—"}
+                    </TableCell>
+                    <TableCell className={cn("font-medium", theme === "dark" ? "text-slate-200" : "")}>
+                      {label}
+                    </TableCell>
+                    <TableCell className={cn("max-w-xs truncate", theme === "dark" ? "text-slate-300" : "")}>
+                      {c.issue_description || "—"}
+                    </TableCell>
+                    <TableCell className={cn("text-xs", theme === "dark" ? "text-slate-300" : "")}>
+                      {formatDate(c.claim_date)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={c.status === "resolved" ? "secondary" : "outline"}
+                        className={cn(
+                          c.status === "resolved" ? "bg-emerald-500/20 text-emerald-700" : "",
+                          theme === "dark" && c.status !== "resolved" ? "border-slate-600 text-slate-300" : ""
+                        )}
+                      >
+                        {c.status === "resolved" ? "Resolved" : "Pending"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {c.status === "pending" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            if (confirm("Mark this claim as resolved? This will not affect sales automatically.")) {
+                              resolveClaim.mutate(c.id);
+                            }
+                          }}
+                          disabled={resolveClaim.isPending}
+                          className="border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10"
+                        >
+                          <Check className="h-3 w-3 mr-1" />
+                          Resolve
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground dark:text-slate-400">
+          Resolving a claim does not automatically reverse the sale. Use this to track manual decisions like refund or replacement.
+        </p>
+      </Card>
+
+      {/* ─── File Claim Dialog ────────────────────────────────── */}
       <Dialog open={claim.open} onOpenChange={(v) => setClaim({ ...claim, open: v })}>
         <DialogContent className={theme === "dark" ? "bg-slate-800 border-slate-700 text-white" : ""}>
           <DialogHeader>
