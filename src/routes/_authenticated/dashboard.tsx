@@ -34,15 +34,12 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
       .single();
 
     const role = roleData?.role;
-    // Salespersons go to sales page
     if (role === "salesperson") {
       throw redirect({ to: "/sales" });
     }
-    // Technicians go to repairs page
     if (role === "technician") {
       throw redirect({ to: "/repairs" });
     }
-    // For shop_admin, cashier, super_admin – allow dashboard
   },
   component: Dashboard,
 });
@@ -168,7 +165,7 @@ function Dashboard() {
   // ── Fetch current user's expiry for self-view (shop admins only) ──
   const { data: userRole } = useQuery({
     queryKey: ["user-role-expiry"],
-    enabled: !isSuper, // only for non-super admins
+    enabled: !isSuper,
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
@@ -192,9 +189,18 @@ function Dashboard() {
         const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
         const startMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
+        // 🔥 Exclude returned winga sales
+        const filterReturned = "winga_returned.is.null, winga_returned.eq.false";
+
         const [todayRes, monthRes, lowStockRes, repairsRes, debtorsRes] = await Promise.all([
-          supabase.from("sales").select("sell_price, discount, quantity, profit").gte("sale_date", startToday),
-          supabase.from("sales").select("sell_price, discount, quantity, profit").gte("sale_date", startMonth),
+          supabase.from("sales")
+            .select("sell_price, discount, quantity, profit")
+            .gte("sale_date", startToday)
+            .or(filterReturned),
+          supabase.from("sales")
+            .select("sell_price, discount, quantity, profit")
+            .gte("sale_date", startMonth)
+            .or(filterReturned),
           supabase.from("inventory_items").select("id, quantity, low_stock_threshold"),
           supabase.from("repairs").select("id").in("status", ["received", "in_progress"]),
           supabase.from("installment_plans").select("balance"),
@@ -320,10 +326,14 @@ function PlatformDashboard() {
     queryKey: ["platform-stats"],
     queryFn: async () => {
       try {
+        // 🔥 Exclude returned winga sales from total sales
+        const filterReturned = "winga_returned.is.null, winga_returned.eq.false";
         const [shopsRes, usersRes, salesRes, repairsRes] = await Promise.all([
           supabase.from("shops").select("id, status"),
           supabase.from("user_roles").select("user_id"),
-          supabase.from("sales").select("sell_price, discount, quantity"),
+          supabase.from("sales")
+            .select("sell_price, discount, quantity")
+            .or(filterReturned),
           supabase.from("repairs").select("id"),
         ]);
         const shops = shopsRes.data ?? [];
