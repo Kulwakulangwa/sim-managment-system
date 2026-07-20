@@ -42,7 +42,6 @@ function WingaPage() {
   const [settleSaleId, setSettleSaleId] = useState<string | null>(null);
   const [settleAmount, setSettleAmount] = useState("");
 
-  // ─── Fetch outstanding winga sales (not settled, not returned) ──
   const { data: wingaSales = [] } = useQuery({
     queryKey: ["winga-sales"],
     queryFn: async () => {
@@ -58,15 +57,11 @@ function WingaPage() {
         .eq("winga_settled", false)
         .eq("winga_returned", false)
         .order("sale_date", { ascending: false });
-      if (error) {
-        console.error("Winga query error:", error);
-        throw error;
-      }
+      if (error) throw error;
       return data;
     },
   });
 
-  // ─── Settle mutation ──────────────────────────────────────────
   const settle = useMutation({
     mutationFn: async () => {
       if (!settleSaleId) throw new Error("No sale selected");
@@ -91,10 +86,8 @@ function WingaPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  // ─── Return mutation ──────────────────────────────────────────
   const returnItem = useMutation({
     mutationFn: async (saleId: string) => {
-      // 1. Get the inventory_item_id from the sale
       const { data: sale, error: saleError } = await supabase
         .from("sales")
         .select("inventory_item_id")
@@ -103,14 +96,12 @@ function WingaPage() {
       if (saleError) throw saleError;
       if (!sale) throw new Error("Sale not found");
 
-      // 2. Restore inventory: set quantity back to 1 and clear deleted_at
       const { error: invError } = await supabase
         .from("inventory_items")
         .update({ quantity: 1, deleted_at: null })
         .eq("id", sale.inventory_item_id);
       if (invError) throw invError;
 
-      // 3. Mark sale as returned
       const { error: retError } = await supabase
         .from("sales")
         .update({ winga_returned: true })
@@ -136,7 +127,6 @@ function WingaPage() {
       "space-y-6 -m-4 sm:-m-6 p-4 sm:p-6 min-h-full rounded-3xl",
       theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
     )}>
-      {/* ─── Header ────────────────────────────────────────────── */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white shadow-xl">
         <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-pink-500/20 blur-3xl" />
         <div className="absolute bottom-0 left-20 h-24 w-24 rounded-full bg-rose-500/20 blur-2xl" />
@@ -155,7 +145,6 @@ function WingaPage() {
         </div>
       </div>
 
-      {/* ─── Table ────────────────────────────────────────────── */}
       <Card className={cn(
         "p-4 overflow-x-auto",
         theme === "dark" ? "bg-slate-800/90 border-slate-700" : "bg-white/80"
@@ -165,7 +154,7 @@ function WingaPage() {
             <TableRow>
               <TableHead className={theme === "dark" ? "text-slate-300" : ""}>Date</TableHead>
               <TableHead className={theme === "dark" ? "text-slate-300" : ""}>Item</TableHead>
-              <TableHead className={theme === "dark" ? "text-slate-300" : ""}>IMEI</TableHead>  {/* ✅ New column */}
+              <TableHead className={theme === "dark" ? "text-slate-300" : ""}>IMEI</TableHead>
               <TableHead className={theme === "dark" ? "text-slate-300" : ""}>Agent</TableHead>
               <TableHead className={cn("text-right", theme === "dark" ? "text-slate-300" : "")}>Amount</TableHead>
               <TableHead className={cn("text-right", theme === "dark" ? "text-slate-300" : "")}>Actions</TableHead>
@@ -239,7 +228,6 @@ function WingaPage() {
         </Table>
       </Card>
 
-      {/* ─── Settle Dialog ────────────────────────────────────── */}
       <Dialog open={settleOpen} onOpenChange={setSettleOpen}>
         <DialogContent className={theme === "dark" ? "bg-slate-800 border-slate-700 text-white" : ""}>
           <DialogHeader>
