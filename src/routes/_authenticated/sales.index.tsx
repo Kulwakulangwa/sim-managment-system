@@ -20,10 +20,9 @@ function SalesPage() {
   const { theme } = useTheme();
   const { data: myRole } = useMyRole();
   const role = myRole?.role;
-  // Hide profit for salespersons and technicians
   const hideProfit = role === "salesperson" || role === "technician";
 
-  // Fetch sales including IMEI
+  // 🔍 Fetch sales excluding returned winga (only for stats, but we also exclude from list to keep consistency)
   const { data: sales = [] } = useQuery({
     queryKey: ["sales-list"],
     queryFn: async () => {
@@ -35,6 +34,7 @@ function SalesPage() {
           customers(full_name, phone),
           profiles(full_name)
         `)
+        .or('winga_returned.is.null, winga_returned.eq.false')
         .order("sale_date", { ascending: false })
         .limit(200);
       if (error) throw error;
@@ -50,14 +50,13 @@ function SalesPage() {
   const totalProfit = sales.reduce((sum, s) => sum + Number(s.profit ?? 0), 0);
   const totalItems = sales.reduce((sum, s) => sum + Number(s.quantity), 0);
 
-  // Conditionally include profit stat
   const stats = [
     { label: t("totalSales"), value: formatTZS(totalSales), icon: TrendingUp },
     ...(hideProfit ? [] : [{ label: t("totalProfit"), value: formatTZS(totalProfit), icon: DollarSign }]),
     { label: t("itemsSold"), value: String(totalItems), icon: ShoppingCart },
   ];
 
-  // Receipt generation – opens in new tab
+  // 🧾 Handle receipt generation – opens in new tab
   const handleReceipt = (sale: any) => {
     const it = sale.inventory_items;
     const label = it ? (it.item_type === "phone" ? `${it.brand ?? ""} ${it.model ?? ""}`.trim() : (it.name ?? "")) : "—";
@@ -90,7 +89,7 @@ function SalesPage() {
       "space-y-6 -m-4 sm:-m-6 p-4 sm:p-6 min-h-full rounded-3xl",
       theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
     )}>
-      {/* Header with gradient – dark background with pink accent */}
+      {/* Header with gradient */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white shadow-xl">
         <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-pink-500/20 blur-3xl" />
         <div className="absolute bottom-0 left-20 h-24 w-24 rounded-full bg-rose-500/20 blur-2xl" />
@@ -111,7 +110,7 @@ function SalesPage() {
             </Link>
           </div>
         </div>
-        {/* Quick stats – profit hidden for salesperson/technician */}
+        {/* Quick stats */}
         <div className="relative z-10 mt-4 flex flex-wrap gap-4 text-sm">
           {stats.map((s) => (
             <div key={s.label} className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 backdrop-blur-sm">
@@ -135,7 +134,6 @@ function SalesPage() {
                 <TableHead className="dark:text-slate-300">{t("paymentType")}</TableHead>
                 <TableHead className="text-right dark:text-slate-300">{t("quantity")}</TableHead>
                 <TableHead className="text-right dark:text-slate-300">{t("total")}</TableHead>
-                {/* Conditionally show Profit header */}
                 {!hideProfit && (
                   <TableHead className="text-right dark:text-slate-300">{t("profit")}</TableHead>
                 )}
@@ -169,7 +167,6 @@ function SalesPage() {
                     </TableCell>
                     <TableCell className="text-right dark:text-slate-300">{s.quantity}</TableCell>
                     <TableCell className="text-right font-semibold dark:text-white">{formatTZS(total)}</TableCell>
-                    {/* Conditionally show Profit value */}
                     {!hideProfit && (
                       <TableCell className="text-right text-success dark:text-emerald-400">{formatTZS(Number(s.profit ?? 0))}</TableCell>
                     )}
