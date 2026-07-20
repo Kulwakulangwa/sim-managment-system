@@ -35,6 +35,7 @@ function POS() {
   const [warrantyMonths, setWarrantyMonths] = useState("0");
   const [installmentMonths, setInstallmentMonths] = useState("3");
   const [downPayment, setDownPayment] = useState("0");
+  const [imei, setImei] = useState("");
 
   const { data: items = [] } = useQuery({
     queryKey: ["inventory-pos"],
@@ -60,8 +61,14 @@ function POS() {
   const total = Math.max(0, subtotal - Number(discount || 0));
 
   const handleSelectItem = (id: string) => {
+    const item = items.find(i => i.id === id);
     setSelectedId(id);
     setQty(1);
+    if (item?.item_type === "phone" && item.imei) {
+      setImei(item.imei);
+    } else {
+      setImei("");
+    }
   };
 
   const complete = useMutation({
@@ -70,15 +77,16 @@ function POS() {
       if (qty < 1 || qty > selected.quantity) throw new Error("Invalid quantity");
       if (!shopId) throw new Error("No shop context");
 
-      // For phones, the IMEI is taken from the selected item itself.
-      // We don't need manual input.
-      if (selected.item_type === "phone") {
-        if (!selected.imei) throw new Error("This phone has no IMEI assigned");
-        // Check if already sold (should not happen since we only show items with quantity > 0)
+      // For phones, IMEI is auto-filled from selected item. If it's an accessory, no IMEI.
+      if (selected.item_type === "phone" && !imei.trim()) {
+        throw new Error("IMEI is required for phone sales");
+      }
+
+      if (selected.item_type === "phone" && imei.trim()) {
         const { data: existing } = await supabase
           .from("sales")
           .select("id")
-          .eq("imei", selected.imei)
+          .eq("imei", imei.trim())
           .maybeSingle();
         if (existing) {
           throw new Error("This IMEI has already been sold");
@@ -107,7 +115,7 @@ function POS() {
         payment_type: paymentType,
         sold_by: userRes.user?.id ?? null,
         shop_id: shopId,
-        imei: selected.item_type === "phone" ? selected.imei : null,
+        imei: selected.item_type === "phone" ? imei.trim() : null,
       }).select("id, sale_date").single();
       if (se) throw se;
 
@@ -204,7 +212,7 @@ function POS() {
                     ? "border-slate-700 bg-slate-900 text-white placeholder-slate-400"
                     : "border-slate-200"
                 )}
-                placeholder="Search by brand, model, name, or IMEI"
+                placeholder="Search by brand, model, or name"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
               />
@@ -248,7 +256,7 @@ function POS() {
                       <div className="flex items-center gap-2 text-xs text-slate-500">
                         <span>Stock: {i.quantity}</span>
                         {i.condition && <span>· {i.condition}</span>}
-                        {i.imei && <span className="font-mono">· {i.imei}</span>}
+                        {i.imei && <span className="font-mono">· IMEI: {i.imei}</span>}
                       </div>
                     </div>
                     <p className={cn(
@@ -306,15 +314,31 @@ function POS() {
                         {selected.condition}
                       </span>
                     )}
-                    {/* Show IMEI if phone */}
-                    {selected.item_type === "phone" && selected.imei && (
-                      <p className="text-xs font-mono text-slate-500 mt-1">IMEI: {selected.imei}</p>
-                    )}
                   </div>
                 </div>
 
-                {/* IMEI field – hidden for phones, we already show it above */}
-                {/* We removed the manual IMEI input entirely */}
+                {selected.item_type === "phone" && (
+                  <div>
+                    <Label className={cn(
+                      "text-sm font-medium flex items-center gap-1",
+                      theme === "dark" ? "text-slate-300" : "text-slate-700"
+                    )}>
+                      IMEI <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      value={imei}
+                      readOnly
+                      disabled
+                      className={cn(
+                        "mt-1 bg-slate-100 dark:bg-slate-700 cursor-not-allowed",
+                        theme === "dark"
+                          ? "border-slate-600 text-slate-300"
+                          : "border-slate-200 text-slate-600"
+                      )}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">IMEI is auto-filled from the selected phone.</p>
+                  </div>
+                )}
 
                 <div>
                   <Label className={cn(
@@ -556,7 +580,7 @@ function POS() {
                 <Button
                   className={`w-full ${BUTTON_GRADIENT} text-white font-medium h-12 text-base`}
                   onClick={() => complete.mutate()}
-                  disabled={complete.isPending || (selected.item_type === "phone" && !selected.imei)}
+                  disabled={complete.isPending || (selected.item_type === "phone" && !imei.trim())}
                 >
                   {complete.isPending ? (
                     <span className="flex items-center gap-2">
