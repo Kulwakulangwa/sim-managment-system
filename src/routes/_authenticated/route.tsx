@@ -153,6 +153,8 @@ function Layout() {
         { to: "/expenses", label: "expenses", icon: Receipt, roles: ["shop_admin"] },
         { to: "/reports", label: "reports", icon: BarChart3, roles: ["shop_admin"] },
         { to: "/users", label: "staff", icon: UserCog, roles: ["shop_admin"] },
+        { to: "/agents", label: "Agents (Winga)", icon: Users, roles: ["shop_admin"] },
+        { to: "/winga", label: "Winga Sales", icon: DollarSign, roles: ["shop_admin"] },
         { to: "/trash", label: "trash", icon: Trash2, roles: ["shop_admin"] },
         { to: "/help", label: "helpCenter", icon: BookOpen },
       ];
