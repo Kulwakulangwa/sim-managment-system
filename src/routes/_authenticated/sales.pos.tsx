@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, Minus, ShoppingCart, Check } from "lucide-react";
+import { Search, Plus, Minus, ShoppingCart, Check, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useTheme } from "@/lib/theme";
@@ -37,10 +37,26 @@ function POS() {
   const [downPayment, setDownPayment] = useState("0");
   const [imei, setImei] = useState("");
 
+  // ─── Winga state ──────────────────────────────────────────────
+  const [isWinga, setIsWinga] = useState(false);
+  const [agentId, setAgentId] = useState<string>("none");
+  const { data: agents = [] } = useQuery({
+    queryKey: ["agents-pos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("agents")
+        .select("id, name, phone")
+        .eq("shop_id", shopId);
+      if (error) throw error;
+      return data;
+    },
+    enabled: isWinga,
+  });
+
   const { data: items = [] } = useQuery({
     queryKey: ["inventory-pos"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("inventory_items").select("*").gt("quantity", 0);
+      const { data, error } = await supabase.from("inventory_items").select("*").gt("quantity", 0).is("deleted_at", null);
       if (error) throw error;
       return data;
     },
@@ -77,7 +93,6 @@ function POS() {
       if (qty < 1 || qty > selected.quantity) throw new Error("Invalid quantity");
       if (!shopId) throw new Error("No shop context");
 
-      // For phones, IMEI is auto-filled from selected item. If it's an accessory, no IMEI.
       if (selected.item_type === "phone" && !imei.trim()) {
         throw new Error("IMEI is required for phone sales");
       }
@@ -93,29 +108,42 @@ function POS() {
         }
       }
 
-      let custId: string | null = customerId !== "none" ? customerId : null;
-      if (!custId && (newCust.name || newCust.phone) && paymentType === "installment") {
-        if (!newCust.name || !newCust.phone) throw new Error("Customer required for installment");
+      let custId: string | null = null;
+      let agentIdValue: string | null = null;
+      let paymentTypeValue: string = paymentType;
+
+      if (isWinga) {
+        // Winga mode: require agent selection
+        if (!agentId || agentId === "none") throw new Error("Please select an agent");
+        agentIdValue = agentId;
+        paymentTypeValue = "winga";
+        // No customer for winga
+      } else {
+        // Normal mode: customer handling
+        custId = customerId !== "none" ? customerId : null;
+        if (!custId && (newCust.name || newCust.phone)) {
+          if (!newCust.name || !newCust.phone) throw new Error("Please enter customer name and phone");
+          const { data, error } = await supabase.from("customers").insert({ full_name: newCust.name, phone: newCust.phone, shop_id: shopId }).select("id").single();
+          if (error) throw error;
+          custId = data.id;
+        }
+        if (paymentType === "installment" && !custId) throw new Error("Customer required for installment");
       }
-      if (!custId && newCust.name && newCust.phone) {
-        const { data, error } = await supabase.from("customers").insert({ full_name: newCust.name, phone: newCust.phone, shop_id: shopId }).select("id").single();
-        if (error) throw error;
-        custId = data.id;
-      }
-      if (paymentType === "installment" && !custId) throw new Error("Customer required for installment");
 
       const { data: userRes } = await supabase.auth.getUser();
       const { data: sale, error: se } = await supabase.from("sales").insert({
         inventory_item_id: selected.id,
         customer_id: custId,
+        agent_id: agentIdValue,
         quantity: qty,
         sell_price: unit,
         discount: Number(discount || 0),
         buy_price_snapshot: Number(selected.buy_price),
-        payment_type: paymentType,
+        payment_type: paymentTypeValue,
         sold_by: userRes.user?.id ?? null,
         shop_id: shopId,
         imei: selected.item_type === "phone" ? imei.trim() : null,
+        winga_settled: isWinga ? false : null,
       }).select("id, sale_date").single();
       if (se) throw se;
 
@@ -212,7 +240,7 @@ function POS() {
                     ? "border-slate-700 bg-slate-900 text-white placeholder-slate-400"
                     : "border-slate-200"
                 )}
-                placeholder="Search by brand, model, or name"
+                placeholder="Search by brand, model, name, or IMEI"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
               />
@@ -404,56 +432,98 @@ function POS() {
                   />
                 </div>
 
+                {/* ─── Customer / Agent section ────────────────── */}
                 <div>
-                  <Label className={cn(
-                    "text-sm font-medium",
-                    theme === "dark" ? "text-slate-300" : "text-slate-700"
-                  )}>
-                    {t("customer")} <span className="text-slate-400 text-xs">({t("optional")})</span>
-                  </Label>
-                  <Select value={customerId} onValueChange={setCustomerId}>
-                    <SelectTrigger className={cn(
-                      "mt-1 focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500",
-                      theme === "dark"
-                        ? "border-slate-700 bg-slate-900 text-white"
-                        : "border-slate-200"
+                  <div className="flex items-center gap-2 mb-1">
+                    <Label className={cn(
+                      "text-sm font-medium",
+                      theme === "dark" ? "text-slate-300" : "text-slate-700"
                     )}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">—</SelectItem>
-                      {customers.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.full_name} · {c.phone}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {customerId === "none" && (
-                    <div className="grid grid-cols-2 gap-2 mt-2">
-                      <Input
-                        placeholder={t("fullName")}
-                        value={newCust.name}
-                        onChange={(e) => setNewCust({ ...newCust, name: e.target.value })}
-                        className={cn(
-                          "focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500",
-                          theme === "dark"
-                            ? "border-slate-700 bg-slate-900 text-white placeholder-slate-400"
-                            : "border-slate-200"
-                        )}
-                      />
-                      <Input
-                        placeholder={t("phone")}
-                        value={newCust.phone}
-                        onChange={(e) => setNewCust({ ...newCust, phone: e.target.value })}
-                        className={cn(
-                          "focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500",
-                          theme === "dark"
-                            ? "border-slate-700 bg-slate-900 text-white placeholder-slate-400"
-                            : "border-slate-200"
-                        )}
-                      />
-                    </div>
+                      {isWinga ? "Agent" : "Customer"}
+                    </Label>
+                    <Button
+                      size="sm"
+                      variant={isWinga ? "default" : "outline"}
+                      onClick={() => {
+                        setIsWinga(!isWinga);
+                        if (!isWinga) {
+                          setAgentId("none");
+                        } else {
+                          setCustomerId("none");
+                        }
+                      }}
+                      className={cn(
+                        isWinga ? "bg-pink-500 hover:bg-pink-600" : "",
+                        "text-xs h-7"
+                      )}
+                    >
+                      <Users className="h-3 w-3 mr-1" />
+                      {isWinga ? "Winga mode" : "Customer"}
+                    </Button>
+                  </div>
+
+                  {isWinga ? (
+                    <Select value={agentId} onValueChange={setAgentId}>
+                      <SelectTrigger className={cn(
+                        "mt-1 focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500",
+                        theme === "dark" ? "border-slate-700 bg-slate-900 text-white" : "border-slate-200"
+                      )}>
+                        <SelectValue placeholder="Select agent" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">—</SelectItem>
+                        {agents.map((a) => (
+                          <SelectItem key={a.id} value={a.id}>
+                            {a.name} · {a.phone || "no phone"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <>
+                      <Select value={customerId} onValueChange={setCustomerId}>
+                        <SelectTrigger className={cn(
+                          "mt-1 focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500",
+                          theme === "dark" ? "border-slate-700 bg-slate-900 text-white" : "border-slate-200"
+                        )}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">—</SelectItem>
+                          {customers.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.full_name} · {c.phone}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {customerId === "none" && (
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                          <Input
+                            placeholder={t("fullName")}
+                            value={newCust.name}
+                            onChange={(e) => setNewCust({ ...newCust, name: e.target.value })}
+                            className={cn(
+                              "focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500",
+                              theme === "dark"
+                                ? "border-slate-700 bg-slate-900 text-white placeholder-slate-400"
+                                : "border-slate-200"
+                            )}
+                          />
+                          <Input
+                            placeholder={t("phone")}
+                            value={newCust.phone}
+                            onChange={(e) => setNewCust({ ...newCust, phone: e.target.value })}
+                            className={cn(
+                              "focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500",
+                              theme === "dark"
+                                ? "border-slate-700 bg-slate-900 text-white placeholder-slate-400"
+                                : "border-slate-200"
+                            )}
+                          />
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
 
