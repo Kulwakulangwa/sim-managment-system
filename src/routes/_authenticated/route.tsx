@@ -53,7 +53,6 @@ export const Route = createFileRoute("/_authenticated")({
 
       if (roleError) {
         console.error("[RouteGuard] Role query error:", roleError);
-        // If the user has no role, sign them out and redirect.
         await supabase.auth.signOut();
         throw redirect({ to: "/auth" });
       }
@@ -145,7 +144,8 @@ function Layout() {
     : [
         { to: "/dashboard", label: "dashboard", icon: LayoutDashboard },
         { to: "/sales", label: "sales", icon: ShoppingCart },
-        { to: "/inventory", label: "inventory", icon: Boxes, roles: ["shop_admin"] },
+        // 🔥 Allow cashier to see inventory
+        { to: "/inventory", label: "inventory", icon: Boxes, roles: ["shop_admin", "cashier"] },
         { to: "/customers", label: "customers", icon: Users },
         { to: "/repairs", label: "repairs", icon: Wrench, roles: ["shop_admin", "technician"] },
         { to: "/warranties", label: "warranties", icon: ShieldCheck },
