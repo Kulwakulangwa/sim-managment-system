@@ -32,7 +32,6 @@ export const Route = createFileRoute("/_authenticated/inventory")({
 
     const role = roleData?.role;
     const isSuperAdminByEmail = user.email === "kulwakulangwa@gmail.com";
-    // ✅ Allow cashier to view inventory
     const allowedRoles = ["super_admin", "shop_admin", "cashier"];
     const isAllowed = allowedRoles.includes(role ?? "") || isSuperAdminByEmail;
 
@@ -79,6 +78,7 @@ function InventoryPage() {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(empty);
+  const [imeiBatch, setImeiBatch] = useState(""); // for batch IMEI entry
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -117,6 +117,36 @@ function InventoryPage() {
 
   const upsert = useMutation({
     mutationFn: async () => {
+      // For phones: if batch IMEI is provided, split and create multiple items
+      if (form.item_type === "phone" && imeiBatch.trim() && !editingId) {
+        const imeis = imeiBatch.split("\n").map(s => s.trim()).filter(s => s.length > 0);
+        if (imeis.length === 0) throw new Error("Please enter at least one IMEI");
+
+        // Check for duplicates in batch
+        const unique = new Set(imeis);
+        if (unique.size !== imeis.length) throw new Error("Duplicate IMEIs found in batch");
+
+        const payloads = imeis.map(imei => ({
+          item_type: "phone" as const,
+          brand: form.brand || null,
+          model: form.model || null,
+          name: null,
+          condition: form.condition,
+          buy_price: Number(form.buy_price || 0),
+          sell_price: Number(form.sell_price || 0),
+          quantity: 1,
+          low_stock_threshold: Number(form.low_stock_threshold || 1),
+          photo_url: form.photo_url || null,
+          imei: imei,
+          shop_id: shopId,
+        }));
+
+        const { error } = await supabase.from("inventory_items").insert(payloads);
+        if (error) throw error;
+        return;
+      }
+
+      // For accessories or editing a single phone
       const payload = {
         item_type: form.item_type,
         brand: form.brand || null,
@@ -128,10 +158,21 @@ function InventoryPage() {
         quantity: Number(form.quantity || 0),
         low_stock_threshold: Number(form.low_stock_threshold || 1),
         photo_url: form.photo_url || null,
+        // If editing a phone, keep the original imei (we'll set separately)
       };
 
       if (editingId) {
-        const { error } = await supabase.from("inventory_items").update(payload).eq("id", editingId);
+        // For editing, we need to preserve the imei if it exists (phones)
+        const { data: existing } = await supabase
+          .from("inventory_items")
+          .select("imei")
+          .eq("id", editingId)
+          .single();
+        const imei = existing?.imei || null;
+        const { error } = await supabase
+          .from("inventory_items")
+          .update({ ...payload, imei })
+          .eq("id", editingId);
         if (error) throw error;
       } else {
         if (!shopId) throw new Error("No shop context");
@@ -144,6 +185,7 @@ function InventoryPage() {
       qc.invalidateQueries({ queryKey: ["inventory-pos"] });
       setOpen(false);
       setForm(empty);
+      setImeiBatch("");
       setEditingId(null);
       toast.success(t("save"));
     },
@@ -173,7 +215,7 @@ function InventoryPage() {
 
   const filtered = items.filter((i) => {
     const s = q.toLowerCase();
-    return !s || `${i.brand ?? ""} ${i.model ?? ""} ${i.name ?? ""}`.toLowerCase().includes(s);
+    return !s || `${i.brand ?? ""} ${i.model ?? ""} ${i.name ?? ""} ${i.imei ?? ""}`.toLowerCase().includes(s);
   });
 
   const openEdit = (i: typeof items[number]) => {
@@ -190,6 +232,9 @@ function InventoryPage() {
       low_stock_threshold: String(i.low_stock_threshold),
       photo_url: i.photo_url ?? "",
     });
+    // For phones, set the imei as read-only field later; we don't have a state for it
+    // We'll display it as a label in the dialog
+    setImeiBatch(""); // no batch edit
     setOpen(true);
   };
 
@@ -223,7 +268,7 @@ function InventoryPage() {
                 <ShoppingCart className="mr-2 h-4 w-4" /> {t("pos")}
               </Button>
             </Link>
-            <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setForm(empty); setEditingId(null); } }}>
+            <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setForm(empty); setImeiBatch(""); setEditingId(null); } }}>
               <DialogTrigger asChild>
                 <Button className="bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:shadow-lg hover:shadow-pink-500/30 transition-all">
                   <Plus className="mr-2 h-4 w-4" /> {t("addItem")}
@@ -262,6 +307,29 @@ function InventoryPage() {
                           onChange={(e) => setForm({ ...form, model: e.target.value })}
                           className={theme === "dark" ? "border-slate-700 bg-slate-800 text-white" : ""}
                         />
+                      </div>
+                      <div className="col-span-2">
+                        <Label className={theme === "dark" ? "text-slate-300" : ""}>
+                          {editingId ? "IMEI (read-only)" : "IMEI Batch (one per line)"}
+                        </Label>
+                        {editingId ? (
+                          // Show the existing IMEI as read-only
+                          <Input
+                            value={items.find(i => i.id === editingId)?.imei || ""}
+                            readOnly
+                            className={theme === "dark" ? "border-slate-700 bg-slate-800 text-white" : ""}
+                          />
+                        ) : (
+                          <Textarea
+                            value={imeiBatch}
+                            onChange={(e) => setImeiBatch(e.target.value)}
+                            placeholder="Enter IMEI numbers, one per line"
+                            className={cn(
+                              "min-h-[100px]",
+                              theme === "dark" ? "border-slate-700 bg-slate-800 text-white placeholder-slate-400" : ""
+                            )}
+                          />
+                        )}
                       </div>
                       <div>
                         <Label className={theme === "dark" ? "text-slate-300" : ""}>{t("condition")}</Label>
@@ -408,6 +476,7 @@ function InventoryPage() {
                 <TableHead className={theme === "dark" ? "text-slate-300" : ""}>Photo</TableHead>
                 <TableHead className={theme === "dark" ? "text-slate-300" : ""}>{t("itemType")}</TableHead>
                 <TableHead className={theme === "dark" ? "text-slate-300" : ""}>{t("name")}/{t("model")}</TableHead>
+                <TableHead className={theme === "dark" ? "text-slate-300" : ""}>IMEI</TableHead> {/* New column */}
                 <TableHead className={cn("text-right", theme === "dark" ? "text-slate-300" : "")}>{t("buyPrice")}</TableHead>
                 <TableHead className={cn("text-right", theme === "dark" ? "text-slate-300" : "")}>{t("sellPrice")}</TableHead>
                 <TableHead className={cn("text-right", theme === "dark" ? "text-slate-300" : "")}>{t("stock")}</TableHead>
@@ -417,7 +486,7 @@ function InventoryPage() {
             <TableBody>
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className={cn("text-center py-6", theme === "dark" ? "text-slate-400" : "text-muted-foreground")}>
+                  <TableCell colSpan={8} className={cn("text-center py-6", theme === "dark" ? "text-slate-400" : "text-muted-foreground")}>
                     {t("empty")}
                   </TableCell>
                 </TableRow>
@@ -443,6 +512,9 @@ function InventoryPage() {
                     </TableCell>
                     <TableCell className={cn("font-medium", theme === "dark" ? "text-slate-200" : "")}>
                       {i.item_type === "phone" ? `${i.brand ?? ""} ${i.model ?? ""}`.trim() : i.name}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs dark:text-slate-300">
+                      {i.imei || "—"}
                     </TableCell>
                     <TableCell className={cn("text-right", theme === "dark" ? "text-slate-300" : "")}>
                       {formatTZS(i.buy_price)}
