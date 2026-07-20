@@ -2,22 +2,27 @@ import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
-import { useShopId } from "@/hooks/use-role";
+import { useShopId, useMyRole } from "@/hooks/use-role";
 import { formatTZS } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea"; // ✅ Import Textarea
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Pencil, ShoppingCart, Upload, X, Package, AlertTriangle } from "lucide-react";
+import { Plus, Search, Pencil, ShoppingCart, Upload, X, Package, AlertTriangle, Trash2 } from "lucide-react";
 import { useState, useRef } from "react";
 import { toast } from "sonner";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
+
+// ─── Helper: remove spaces and dashes from IMEI ──────────────
+const cleanImei = (value: string): string => {
+  return value.replace(/[\s-]/g, '');
+};
 
 export const Route = createFileRoute("/_authenticated/inventory")({
   beforeLoad: async () => {
@@ -73,6 +78,10 @@ function InventoryPage() {
   const qc = useQueryClient();
   const shopId = useShopId();
   const { theme } = useTheme();
+  const { data: myRole } = useMyRole();
+  const role = myRole?.role;
+  const isAdmin = role === "shop_admin" || role === "super_admin";
+
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -83,10 +92,15 @@ function InventoryPage() {
   // Batch IMEI state (only for phones)
   const [imeiBatch, setImeiBatch] = useState("");
 
+  // ─── Fetch inventory (exclude soft‑deleted) ──────────────
   const { data: items = [] } = useQuery({
     queryKey: ["inventory"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("inventory_items").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("inventory_items")
+        .select("*")
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -94,6 +108,28 @@ function InventoryPage() {
 
   const totalItems = items.length;
   const lowStockItems = items.filter((i) => i.quantity <= i.low_stock_threshold).length;
+
+  // ─── Delete mutation (soft delete) ─────────────────────────
+  const deleteItem = useMutation({
+    mutationFn: async (id: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+      const { error } = await supabase
+        .from("inventory_items")
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: user.id,
+        })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inventory"] });
+      qc.invalidateQueries({ queryKey: ["inventory-pos"] });
+      toast.success("Item moved to trash");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const uploadPhoto = async (file: File): Promise<string> => {
     const fileExt = file.name.split(".").pop();
@@ -120,8 +156,10 @@ function InventoryPage() {
     mutationFn: async () => {
       // If phone and we have batch IMEIs, create multiple items
       if (form.item_type === "phone" && imeiBatch.trim()) {
-        const imeis = imeiBatch.split("\n").map(s => s.trim()).filter(s => s.length > 0);
-        if (imeis.length === 0) throw new Error("Please enter at least one IMEI");
+        const rawImeis = imeiBatch.split("\n").map(s => s.trim()).filter(s => s.length > 0);
+        if (rawImeis.length === 0) throw new Error("Please enter at least one IMEI");
+
+        const cleanedImeis = rawImeis.map(cleanImei).filter(s => s.length > 0);
 
         const basePayload = {
           item_type: form.item_type,
@@ -131,14 +169,13 @@ function InventoryPage() {
           condition: form.condition,
           buy_price: Number(form.buy_price || 0),
           sell_price: Number(form.sell_price || 0),
-          quantity: 1, // each phone is a separate item with quantity 1
+          quantity: 1,
           low_stock_threshold: Number(form.low_stock_threshold || 1),
           photo_url: form.photo_url || null,
           shop_id: shopId,
         };
 
-        // Insert each IMEI as a separate item
-        const insertPromises = imeis.map((imei) =>
+        const insertPromises = cleanedImeis.map((imei) =>
           supabase.from("inventory_items").insert({ ...basePayload, imei })
         );
         const results = await Promise.all(insertPromises);
@@ -148,7 +185,7 @@ function InventoryPage() {
         return;
       }
 
-      // Regular insert/update (for accessories or single phone)
+      // Regular insert/update
       const payload = {
         item_type: form.item_type,
         brand: form.brand || null,
@@ -223,7 +260,6 @@ function InventoryPage() {
       low_stock_threshold: String(i.low_stock_threshold),
       photo_url: i.photo_url ?? "",
     });
-    // For editing, we can't batch edit multiple IMEIs, so we just leave batch empty.
     setImeiBatch("");
     setOpen(true);
   };
@@ -233,6 +269,7 @@ function InventoryPage() {
       "space-y-6 -m-4 sm:-m-6 p-4 sm:p-6 min-h-full rounded-3xl",
       theme === "dark" ? "bg-[#0f0a12]" : "bg-[#F7F5FA]"
     )}>
+      {/* ─── Header ────────────────────────────────────────────── */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white shadow-xl">
         <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-pink-500/20 blur-3xl" />
         <div className="absolute bottom-0 left-20 h-24 w-24 rounded-full bg-rose-500/20 blur-2xl" />
@@ -265,7 +302,9 @@ function InventoryPage() {
               </DialogTrigger>
               <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader><DialogTitle>{editingId ? t("edit") : t("addItem")}</DialogTitle></DialogHeader>
+                {/* ─── Form ────────────────────────────────────── */}
                 <div className="grid grid-cols-2 gap-3">
+                  {/* item_type */}
                   <div className="col-span-2">
                     <Label className={theme === "dark" ? "text-slate-300" : ""}>{t("itemType")}</Label>
                     <Select value={form.item_type} onValueChange={(v) => {
@@ -318,11 +357,11 @@ function InventoryPage() {
                         <Textarea
                           value={imeiBatch}
                           onChange={(e) => setImeiBatch(e.target.value)}
-                          placeholder="Enter multiple IMEIs, one per line"
+                          placeholder="Enter multiple IMEIs, one per line (spaces and dashes will be removed)"
                           rows={5}
                           className={theme === "dark" ? "border-slate-700 bg-slate-800 text-white" : ""}
                         />
-                        <p className="text-xs text-muted-foreground mt-1">Each IMEI will create a separate inventory item.</p>
+                        <p className="text-xs text-muted-foreground mt-1">Each IMEI will create a separate inventory item. Spaces and dashes are automatically removed.</p>
                       </div>
                     </>
                   ) : (
@@ -333,7 +372,7 @@ function InventoryPage() {
                         onChange={(e) => setForm({ ...form, name: e.target.value })}
                         className={theme === "dark" ? "border-slate-700 bg-slate-800 text-white" : ""}
                       />
-                      <div>
+                      <div className="mt-2">
                         <Label className={theme === "dark" ? "text-slate-300" : ""}>{t("stock")}</Label>
                         <Input
                           type="number"
@@ -364,7 +403,7 @@ function InventoryPage() {
                     />
                   </div>
 
-                  {form.item_type === "phone" ? (
+                  {form.item_type === "phone" && (
                     <div className="col-span-2">
                       <Label className={theme === "dark" ? "text-slate-300" : ""}>{t("lowStockThreshold")}</Label>
                       <Input
@@ -374,7 +413,7 @@ function InventoryPage() {
                         className={theme === "dark" ? "border-slate-700 bg-slate-800 text-white" : ""}
                       />
                     </div>
-                  ) : null}
+                  )}
 
                   {/* Photo upload */}
                   <div className="col-span-2">
@@ -431,6 +470,7 @@ function InventoryPage() {
         </div>
       </div>
 
+      {/* ─── Table ────────────────────────────────────────────── */}
       <Card className={cn(
         "border-0 shadow-sm backdrop-blur-sm p-4",
         theme === "dark"
@@ -462,7 +502,7 @@ function InventoryPage() {
                 <TableHead className={cn("text-right", theme === "dark" ? "text-slate-300" : "")}>{t("buyPrice")}</TableHead>
                 <TableHead className={cn("text-right", theme === "dark" ? "text-slate-300" : "")}>{t("sellPrice")}</TableHead>
                 <TableHead className={cn("text-right", theme === "dark" ? "text-slate-300" : "")}>{t("stock")}</TableHead>
-                <TableHead className={theme === "dark" ? "text-slate-300" : ""} />
+                <TableHead className={cn("text-right", theme === "dark" ? "text-slate-300" : "")}>{t("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -511,7 +551,7 @@ function InventoryPage() {
                         <span className={theme === "dark" ? "text-slate-300" : ""}>{i.quantity}</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right space-x-1">
                       <Button
                         size="sm"
                         variant="ghost"
@@ -520,6 +560,21 @@ function InventoryPage() {
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
+                      {isAdmin && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            if (confirm("Delete this item? It will be moved to trash.")) {
+                              deleteItem.mutate(i.id);
+                            }
+                          }}
+                          disabled={deleteItem.isPending}
+                          className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:text-rose-300 dark:hover:bg-rose-950/20"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 );
