@@ -223,6 +223,56 @@ export const activateShopAdmin = createServerFn({ method: "POST" })
     return { ok: true, updated };
   });
 
+// ─── Return Winga Sale (restore inventory) ──────────────────
+export const returnWingaSale = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { sale_id: string }) =>
+    z.object({ sale_id: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    console.log("[returnWingaSale] Called with sale_id:", data.sale_id);
+
+    // Get the inventory_item_id from the sale
+    const { data: sale, error: saleError } = await context.supabase
+      .from("sales")
+      .select("inventory_item_id")
+      .eq("id", data.sale_id)
+      .single();
+
+    if (saleError) {
+      console.error("[returnWingaSale] Sale fetch error:", saleError);
+      throw new Error("Sale not found");
+    }
+    if (!sale) throw new Error("Sale not found");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Restore inventory
+    const { error: invError } = await supabaseAdmin
+      .from("inventory_items")
+      .update({ quantity: 1, deleted_at: null })
+      .eq("id", sale.inventory_item_id);
+
+    if (invError) {
+      console.error("[returnWingaSale] Inventory update error:", invError);
+      throw new Error(invError.message);
+    }
+
+    // Mark sale as returned
+    const { error: retError } = await supabaseAdmin
+      .from("sales")
+      .update({ winga_returned: true })
+      .eq("id", data.sale_id);
+
+    if (retError) {
+      console.error("[returnWingaSale] Sale update error:", retError);
+      throw new Error(retError.message);
+    }
+
+    console.log("[returnWingaSale] Return successful for sale:", data.sale_id);
+    return { ok: true };
+  });
+
 // ──────────────────────────────────────────────────────────────
 // 3. Staff management (Shop Admin / Super Admin)
 // ──────────────────────────────────────────────────────────────
