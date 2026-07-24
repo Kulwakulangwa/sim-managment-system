@@ -1,5 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/lib/i18n";
 import { useShopId } from "@/hooks/use-role";
@@ -16,6 +17,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
+import { returnWingaSale } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/_authenticated/winga")({
   beforeLoad: async () => {
@@ -42,6 +44,8 @@ function WingaPage() {
   const [settleOpen, setSettleOpen] = useState(false);
   const [settleSaleId, setSettleSaleId] = useState<string | null>(null);
   const [settleAmount, setSettleAmount] = useState("");
+
+  const returnWingaSaleFn = useServerFn(returnWingaSale);
 
   const { data: wingaSales = [] } = useQuery({
     queryKey: ["winga-sales"],
@@ -87,27 +91,10 @@ function WingaPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // ✅ Use server function for return (bypasses RLS)
   const returnItem = useMutation({
     mutationFn: async (saleId: string) => {
-      const { data: sale, error: saleError } = await supabase
-        .from("sales")
-        .select("inventory_item_id")
-        .eq("id", saleId)
-        .single();
-      if (saleError) throw saleError;
-      if (!sale) throw new Error("Sale not found");
-
-      const { error: invError } = await supabase
-        .from("inventory_items")
-        .update({ quantity: 1, deleted_at: null })
-        .eq("id", sale.inventory_item_id);
-      if (invError) throw invError;
-
-      const { error: retError } = await supabase
-        .from("sales")
-        .update({ winga_returned: true })
-        .eq("id", saleId);
-      if (retError) throw retError;
+      await returnWingaSaleFn({ data: { sale_id: saleId } });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["winga-sales"] });
