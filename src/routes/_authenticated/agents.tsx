@@ -24,7 +24,8 @@ export const Route = createFileRoute("/_authenticated/agents")({
       .select("role")
       .eq("user_id", user.id)
       .single();
-    if (role?.role !== "shop_admin" && role?.role !== "super_admin") {
+    // 🔥 Allow cashier as well
+    if (role?.role !== "shop_admin" && role?.role !== "super_admin" && role?.role !== "cashier") {
       throw redirect({ to: "/dashboard" });
     }
   },
